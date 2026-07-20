@@ -27,26 +27,56 @@ const COLORS = {
   text: "#E9E6DF", textMuted: "#8B899A", textFaint: "#55535F",
   support: "#D8A657", contradict: "#B876C9", supersede: "#5B5A64",
 };
-
+const DOMAIN_ACCENTS = ["#D8A657", "#7FA8C9", "#8FBF8B", "#C98B7F", "#A896C9", "#7FC9BE", "#C9B57F", "#B87F9E"];
 const STORAGE_KEY = "palimpsest:graph";
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const UNCATEGORIZED = "uncategorized";
+const sans = { fontFamily: "system-ui, sans-serif" };
 
-function tagAnchor(tag, width, height) {
-  let hash = 0;
-  for (let i = 0; i < tag.length; i++) hash = (hash * 31 + tag.charCodeAt(i)) | 0;
-  const angle = (Math.abs(hash) % 360) * (Math.PI / 180);
-  const radius = Math.min(width, height) * 0.3;
+const DEFAULT_DOMAINS = [
+  { id: "career", label: "Career & Work" },
+  { id: "relationships", label: "Relationships & People" },
+  { id: "health", label: "Health & Body" },
+  { id: "growth", label: "Personal Growth" },
+];
+const SUGGESTED_DOMAINS = [
+  { id: "money", label: "Money & Finances" },
+  { id: "politics", label: "Politics & Society" },
+  { id: "philosophy", label: "Philosophy & Meaning" },
+  { id: "culture", label: "Culture & Recreation" },
+  { id: "science", label: "Science & Technology" },
+];
+
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+function formatDate(ts) { return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+
+function domainAnchor(domainId, domains, width, height) {
+  if (!domainId || domainId === UNCATEGORIZED) return { x: width / 2, y: height / 2 };
+  const idx = domains.findIndex((d) => d.id === domainId);
+  if (idx === -1) return { x: width / 2, y: height / 2 };
+  const angle = (idx / Math.max(domains.length, 1)) * 2 * Math.PI - Math.PI / 2;
+  const radius = Math.min(width, height) * 0.34;
   return { x: width / 2 + radius * Math.cos(angle), y: height / 2 + radius * Math.sin(angle) };
 }
-function formatDate(ts) {
-  return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+function subdomainAnchor(subdomainId, subdomains, domains, width, height) {
+  const sd = subdomains.find((s) => s.id === subdomainId);
+  if (!sd) return null;
+  const base = domainAnchor(sd.domainId, domains, width, height);
+  const siblings = subdomains.filter((s) => s.domainId === sd.domainId);
+  const idx = Math.max(siblings.findIndex((s) => s.id === sd.id), 0);
+  const angle = (idx / Math.max(siblings.length, 1)) * 2 * Math.PI + 0.7;
+  const r = 58;
+  return { x: base.x + r * Math.cos(angle), y: base.y + r * Math.sin(angle) };
+}
+function nodeAnchor(n, domains, subdomains, width, height) {
+  if (n.subdomainId) {
+    const a = subdomainAnchor(n.subdomainId, subdomains, domains, width, height);
+    if (a) return a;
+  }
+  return domainAnchor(n.domainId, domains, width, height);
 }
 
-// inline icons (no external icon package on a static page)
 const Icon = ({ children, size = 14, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    {children}
-  </svg>
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
 );
 const SearchIcon = (p) => <Icon {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></Icon>;
 const PlusIcon = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
@@ -54,10 +84,13 @@ const XIcon = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1=
 const LinkIcon = (p) => <Icon {...p}><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></Icon>;
 const TrashIcon = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></Icon>;
 const ChevronIcon = (p) => <Icon {...p}><polyline points="9 18 15 12 9 6"/></Icon>;
+const SettingsIcon = (p) => <Icon {...p}><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill={p.color||"currentColor"}/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill={p.color||"currentColor"}/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="11" cy="18" r="2" fill={p.color||"currentColor"}/></Icon>;
 
 function Palimpsest() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [domains, setDomains] = useState(DEFAULT_DOMAINS);
+  const [subdomains, setSubdomains] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
   const [positions, setPositions] = useState({});
@@ -67,9 +100,12 @@ function Palimpsest() {
   const [selectedId, setSelectedId] = useState(null);
   const [query, setQuery] = useState("");
   const [showAdd, setShowAdd] = useState(false);
+  const [showDomains, setShowDomains] = useState(false);
   const [linking, setLinking] = useState(false);
   const [linkQuery, setLinkQuery] = useState("");
-  const [form, setForm] = useState({ title: "", body: "", tags: "" });
+  const [newDomainText, setNewDomainText] = useState("");
+  const [newSubdomainText, setNewSubdomainText] = useState({});
+  const [form, setForm] = useState({ title: "", body: "", domainId: DEFAULT_DOMAINS[0].id, subdomainId: "" });
 
   useEffect(() => {
     try {
@@ -78,6 +114,8 @@ function Palimpsest() {
         const data = JSON.parse(raw);
         setNodes(data.nodes || []);
         setEdges(data.edges || []);
+        setDomains(data.domains && data.domains.length ? data.domains : DEFAULT_DOMAINS);
+        setSubdomains(data.subdomains || []);
       }
     } catch (e) {}
     setLoaded(true);
@@ -85,10 +123,8 @@ function Palimpsest() {
 
   useEffect(() => {
     if (!loaded) return;
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges }));
-    } catch (e) {}
-  }, [nodes, edges, loaded]);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges, domains, subdomains })); } catch (e) {}
+  }, [nodes, edges, domains, subdomains, loaded]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -102,45 +138,42 @@ function Palimpsest() {
   }, []);
 
   const nodesById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes]);
+  const domainsById = useMemo(() => Object.fromEntries(domains.map((d) => [d.id, d])), [domains]);
+  const subdomainsById = useMemo(() => Object.fromEntries(subdomains.map((s) => [s.id, s])), [subdomains]);
 
   useEffect(() => {
     if (!loaded) return;
     const { width, height } = dimensions;
     if (!width || !height) return;
-
     const simNodes = nodes.map((n) => ({
-      id: n.id, tags: n.tags, status: n.status,
+      id: n.id, domainId: n.domainId, subdomainId: n.subdomainId, status: n.status,
       x: positions[n.id]?.x ?? width / 2 + (Math.random() - 0.5) * 120,
       y: positions[n.id]?.y ?? height / 2 + (Math.random() - 0.5) * 120,
     }));
     const simEdges = edges.map((e) => ({ ...e }));
-    const anchor = (d) => {
-      if (!d.tags || d.tags.length === 0) return { x: width / 2, y: height / 2 };
-      const pts = d.tags.map((t) => tagAnchor(t, width, height));
-      return { x: d3.mean(pts, (p) => p.x), y: d3.mean(pts, (p) => p.y) };
-    };
-
     const sim = d3.forceSimulation(simNodes)
-      .force("charge", d3.forceManyBody().strength(-220))
-      .force("collide", d3.forceCollide((d) => (d.status === "superseded" ? 20 : 30)))
-      .force("link", d3.forceLink(simEdges).id((d) => d.id).distance(100).strength(0.22))
-      .force("x", d3.forceX((d) => anchor(d).x).strength(0.06))
-      .force("y", d3.forceY((d) => anchor(d).y).strength(0.06))
+      .force("charge", d3.forceManyBody().strength(-200))
+      .force("collide", d3.forceCollide((d) => (d.status === "superseded" ? 18 : 28)))
+      .force("link", d3.forceLink(simEdges).id((d) => d.id).distance(80).strength(0.2))
+      .force("x", d3.forceX((d) => nodeAnchor(d, domains, subdomains, width, height).x).strength((d) => (d.subdomainId ? 0.2 : 0.05)))
+      .force("y", d3.forceY((d) => nodeAnchor(d, domains, subdomains, width, height).y).strength((d) => (d.subdomainId ? 0.2 : 0.05)))
       .on("tick", () => {
         const pos = {};
         simNodes.forEach((n) => (pos[n.id] = { x: n.x, y: n.y }));
         setPositions(pos);
       });
     return () => sim.stop();
-  }, [nodes, edges, loaded, dimensions.width, dimensions.height]);
+  }, [nodes, edges, domains, subdomains, loaded, dimensions.width, dimensions.height]);
 
   const matchedIds = useMemo(() => {
     if (!query.trim()) return null;
     const q = query.toLowerCase();
     return new Set(nodes.filter((n) =>
-      n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) || n.tags.some((t) => t.toLowerCase().includes(q))
+      n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) ||
+      (domainsById[n.domainId]?.label || "").toLowerCase().includes(q) ||
+      (subdomainsById[n.subdomainId]?.label || "").toLowerCase().includes(q)
     ).map((n) => n.id));
-  }, [query, nodes]);
+  }, [query, nodes, domainsById, subdomainsById]);
 
   const selected = selectedId ? nodesById[selectedId] : null;
   const connectedEdges = useMemo(() => {
@@ -152,11 +185,11 @@ function Palimpsest() {
     if (!form.title.trim()) return;
     const node = {
       id: uid(), title: form.title.trim(), body: form.body.trim(),
-      tags: form.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      domainId: form.domainId || UNCATEGORIZED, subdomainId: form.subdomainId || null,
       status: "active", supersededBy: null, createdAt: Date.now(),
     };
     setNodes((ns) => [...ns, node]);
-    setForm({ title: "", body: "", tags: "" });
+    setForm({ title: "", body: "", domainId: domains[0]?.id || UNCATEGORIZED, subdomainId: "" });
     setShowAdd(false);
     setSelectedId(node.id);
   }
@@ -185,21 +218,57 @@ function Palimpsest() {
   }, [nodes, selected, linkQuery]);
 
   const edgeColor = (type) => (type === "support" ? COLORS.support : type === "contradict" ? COLORS.contradict : COLORS.supersede);
-  const sans = { fontFamily: "system-ui, sans-serif" };
+  const domainAccent = (domainId) => {
+    const idx = domains.findIndex((d) => d.id === domainId);
+    return idx === -1 ? COLORS.textFaint : DOMAIN_ACCENTS[idx % DOMAIN_ACCENTS.length];
+  };
+
+  function deleteDomain(id) {
+    if (!window.confirm("Delete this domain? Entries inside it will move to Uncategorized.")) return;
+    const subIds = new Set(subdomains.filter((s) => s.domainId === id).map((s) => s.id));
+    setDomains((ds) => ds.filter((d) => d.id !== id));
+    setSubdomains((ss) => ss.filter((s) => s.domainId !== id));
+    setNodes((ns) => ns.map((n) => (n.domainId === id || subIds.has(n.subdomainId) ? { ...n, domainId: UNCATEGORIZED, subdomainId: null } : n)));
+  }
+  function deleteSubdomain(id) {
+    if (!window.confirm("Delete this sub-domain? Its entries stay in the parent domain.")) return;
+    setSubdomains((ss) => ss.filter((s) => s.id !== id));
+    setNodes((ns) => ns.map((n) => (n.subdomainId === id ? { ...n, subdomainId: null } : n)));
+  }
+  function addDomain(label, presetId) {
+    const trimmed = label.trim();
+    if (!trimmed) return;
+    const id = presetId || uid();
+    if (domains.some((d) => d.id === id)) return;
+    setDomains((ds) => [...ds, { id, label: trimmed }]);
+    setNewDomainText("");
+  }
+  function addSubdomain(domainId) {
+    const text = (newSubdomainText[domainId] || "").trim();
+    if (!text) return;
+    setSubdomains((ss) => [...ss, { id: uid(), domainId, label: text }]);
+    setNewSubdomainText((s) => ({ ...s, [domainId]: "" }));
+  }
+
+  const availableSuggestions = SUGGESTED_DOMAINS.filter((s) => !domains.some((d) => d.id === s.id));
+  const noSelect = { userSelect: "text", WebkitUserSelect: "text" };
 
   return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: COLORS.bg, color: COLORS.text }}>
+    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: COLORS.bg, color: COLORS.text, userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: `1px solid ${COLORS.panelBorder}`, flexShrink: 0 }}>
         <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, marginRight: 8 }}>
           <span style={{ fontSize: 18, fontWeight: 500, letterSpacing: 0.3 }}>Palimpsest</span>
           <span style={{ fontSize: 12, color: COLORS.textFaint, ...sans }}>{nodes.length} thought{nodes.length === 1 ? "" : "s"}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999, flex: 1, maxWidth: 360, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999, flex: 1, maxWidth: 320, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }}>
           <SearchIcon size={14} color={COLORS.textFaint} />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your thoughts…"
-            style={{ background: "transparent", outline: "none", border: "none", fontSize: 14, flex: 1, color: COLORS.text, ...sans }} />
+            style={{ background: "transparent", outline: "none", border: "none", fontSize: 14, flex: 1, color: COLORS.text, ...sans, ...noSelect }} />
         </div>
-        <button onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, fontSize: 14, marginLeft: "auto", background: COLORS.text, color: COLORS.bg, border: "none", fontWeight: 500, ...sans }}>
+        <button onClick={() => setShowDomains(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, fontSize: 14, marginLeft: "auto", background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.textMuted, ...sans }}>
+          <SettingsIcon size={14} /> Domains
+        </button>
+        <button onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, fontSize: 14, background: COLORS.text, color: COLORS.bg, border: "none", fontWeight: 500, ...sans }}>
           <PlusIcon size={14} /> New thought
         </button>
       </div>
@@ -210,12 +279,22 @@ function Palimpsest() {
         ) : nodes.length === 0 ? (
           <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
             <p style={{ color: COLORS.textMuted }}>Nothing here yet.</p>
-            <button onClick={() => setShowAdd(true)} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 14, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, ...sans }}>
-              Add your first thought
-            </button>
+            <button onClick={() => setShowAdd(true)} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 14, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, ...sans }}>Add your first thought</button>
           </div>
         ) : (
           <svg width={dimensions.width} height={dimensions.height}>
+            <g>
+              {domains.map((d) => {
+                const a = domainAnchor(d.id, domains, dimensions.width, dimensions.height);
+                return <text key={d.id} x={a.x} y={a.y - 46} textAnchor="middle" fontSize={11} letterSpacing={1} fill={domainAccent(d.id)} opacity={0.55} style={{ ...sans, pointerEvents: "none", textTransform: "uppercase" }}>{d.label}</text>;
+              })}
+              {subdomains.map((s) => {
+                if (!nodes.some((n) => n.subdomainId === s.id)) return null;
+                const a = subdomainAnchor(s.id, subdomains, domains, dimensions.width, dimensions.height);
+                if (!a) return null;
+                return <text key={s.id} x={a.x} y={a.y - 24} textAnchor="middle" fontSize={9.5} fill={COLORS.textFaint} opacity={0.7} style={{ ...sans, pointerEvents: "none" }}>{s.label}</text>;
+              })}
+            </g>
             <g>
               {edges.map((e) => {
                 const s = positions[e.source], t = positions[e.target];
@@ -234,16 +313,11 @@ function Palimpsest() {
                 const isSuperseded = n.status === "superseded";
                 const isSelected = selectedId === n.id;
                 const dimmed = matchedIds && !matchedIds.has(n.id);
-                const r = isSuperseded ? 5 : isSelected ? 9 : 7;
+                const r = isSuperseded ? 5 : isSelected ? 9 : n.subdomainId ? 6 : 7.5;
                 return (
-                  <g key={n.id} transform={`translate(${p.x},${p.y})`} onClick={() => setSelectedId(n.id)}
-                    style={{ cursor: "pointer" }} opacity={dimmed ? 0.15 : isSuperseded ? 0.45 : 1}>
-                    <circle r={r} fill={isSuperseded ? COLORS.supersede : isSelected ? COLORS.support : COLORS.text}
-                      stroke={isSelected ? COLORS.support : "none"} strokeWidth={2} />
-                    <text x={r + 6} y={4} fontSize={12} fill={isSuperseded ? COLORS.textFaint : COLORS.textMuted}
-                      style={{ ...sans, pointerEvents: "none" }}>
-                      {n.title.length > 34 ? n.title.slice(0, 34) + "…" : n.title}
-                    </text>
+                  <g key={n.id} transform={`translate(${p.x},${p.y})`} onClick={() => setSelectedId(n.id)} style={{ cursor: "pointer" }} opacity={dimmed ? 0.15 : isSuperseded ? 0.45 : 1}>
+                    <circle r={r} fill={isSuperseded ? COLORS.supersede : isSelected ? COLORS.support : domainAccent(n.domainId)} stroke={isSelected ? COLORS.support : "none"} strokeWidth={2} />
+                    <text x={r + 6} y={4} fontSize={12} fill={isSuperseded ? COLORS.textFaint : COLORS.textMuted} style={{ ...sans, pointerEvents: "none" }}>{n.title.length > 34 ? n.title.slice(0, 34) + "…" : n.title}</text>
                   </g>
                 );
               })}
@@ -258,30 +332,23 @@ function Palimpsest() {
             <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 2, background: COLORS.supersede, display: "inline-block" }} /> supersedes</span>
           </div>
         )}
-
         <div style={{ position: "absolute", bottom: 16, right: 16, fontSize: 12, color: COLORS.textFaint, ...sans }}>Jinnie × Claude</div>
 
         {selected && (
           <div style={{ position: "absolute", top: 0, right: 0, height: "100%", width: 340, display: "flex", flexDirection: "column", background: COLORS.panel, borderLeft: `1px solid ${COLORS.panelBorder}` }}>
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: 16, borderBottom: `1px solid ${COLORS.panelBorder}` }}>
               <div>
-                <div style={{ fontSize: 12, marginBottom: 4, color: COLORS.textFaint, ...sans }}>
-                  {formatDate(selected.createdAt)}{selected.status === "superseded" && " · superseded"}
-                </div>
+                <div style={{ fontSize: 12, marginBottom: 4, color: COLORS.textFaint, ...sans }}>{formatDate(selected.createdAt)}{selected.status === "superseded" && " · superseded"}</div>
                 <div style={{ fontSize: 16, lineHeight: 1.3 }}>{selected.title}</div>
               </div>
               <button onClick={() => setSelectedId(null)} style={{ background: "none", border: "none" }}><XIcon size={16} color={COLORS.textFaint} /></button>
             </div>
-
             <div style={{ padding: 16, flex: 1, overflowY: "auto" }}>
-              {selected.body && <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 16, color: COLORS.textMuted }}>{selected.body}</p>}
-
-              {selected.tags.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
-                  {selected.tags.map((t) => <span key={t} style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.textMuted, ...sans }}>{t}</span>)}
-                </div>
-              )}
-
+              {selected.body && <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 12, color: COLORS.textMuted, ...noSelect }}>{selected.body}</p>}
+              <div style={{ fontSize: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 4, color: domainAccent(selected.domainId), ...sans }}>
+                {domainsById[selected.domainId]?.label || "Uncategorized"}
+                {selected.subdomainId && subdomainsById[selected.subdomainId] && (<><ChevronIcon size={11} color={COLORS.textFaint} /><span style={{ color: COLORS.textMuted }}>{subdomainsById[selected.subdomainId].label}</span></>)}
+              </div>
               {connectedEdges.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
                   <div style={{ fontSize: 12, marginBottom: 8, color: COLORS.textFaint, ...sans }}>Connections</div>
@@ -302,11 +369,10 @@ function Palimpsest() {
                   </div>
                 </div>
               )}
-
               {linking ? (
                 <div style={{ marginBottom: 16 }}>
                   <input autoFocus value={linkQuery} onChange={(e) => setLinkQuery(e.target.value)} placeholder="Find a thought…"
-                    style={{ width: "100%", fontSize: 14, padding: "6px 10px", borderRadius: 6, marginBottom: 8, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans }} />
+                    style={{ width: "100%", fontSize: 14, padding: "6px 10px", borderRadius: 6, marginBottom: 8, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans, ...noSelect }} />
                   <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 160, overflowY: "auto" }}>
                     {linkCandidates.map((c) => (
                       <div key={c.id} style={{ padding: "6px 8px", borderRadius: 6, background: COLORS.bg }}>
@@ -322,16 +388,56 @@ function Palimpsest() {
                   <button onClick={() => setLinking(false)} style={{ fontSize: 12, marginTop: 8, background: "none", border: "none", color: COLORS.textFaint, ...sans }}>Cancel</button>
                 </div>
               ) : (
-                <button onClick={() => setLinking(true)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginBottom: 16, background: "none", border: "none", color: COLORS.textMuted, ...sans }}>
-                  <LinkIcon size={13} /> Link to another thought
-                </button>
+                <button onClick={() => setLinking(true)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginBottom: 16, background: "none", border: "none", color: COLORS.textMuted, ...sans }}><LinkIcon size={13} /> Link to another thought</button>
               )}
             </div>
-
             <div style={{ padding: 16, borderTop: `1px solid ${COLORS.panelBorder}` }}>
-              <button onClick={() => deleteNode(selected.id)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, background: "none", border: "none", color: COLORS.textFaint, ...sans }}>
-                <TrashIcon size={13} /> Delete
-              </button>
+              <button onClick={() => deleteNode(selected.id)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, background: "none", border: "none", color: COLORS.textFaint, ...sans }}><TrashIcon size={13} /> Delete</button>
+            </div>
+          </div>
+        )}
+
+        {showDomains && (
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={() => setShowDomains(false)}>
+            <div style={{ width: 400, maxHeight: "80vh", overflowY: "auto", padding: 20, borderRadius: 12, display: "flex", flexDirection: "column", gap: 16, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ fontSize: 14, color: COLORS.textMuted, ...sans }}>Domains</div>
+                <button onClick={() => setShowDomains(false)} style={{ background: "none", border: "none" }}><XIcon size={16} color={COLORS.textFaint} /></button>
+              </div>
+              {domains.map((d) => (
+                <div key={d.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 8, background: COLORS.bg }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <span style={{ color: domainAccent(d.id), fontSize: 14 }}>{d.label}</span>
+                    <button onClick={() => deleteDomain(d.id)} style={{ background: "none", border: "none" }}><TrashIcon size={13} color={COLORS.textFaint} /></button>
+                  </div>
+                  {subdomains.filter((s) => s.domainId === d.id).map((s) => (
+                    <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 12, fontSize: 12, color: COLORS.textMuted, ...sans }}>
+                      <span>{s.label}</span>
+                      <button onClick={() => deleteSubdomain(s.id)} style={{ background: "none", border: "none" }}><TrashIcon size={12} color={COLORS.textFaint} /></button>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
+                    <input value={newSubdomainText[d.id] || ""} onChange={(e) => setNewSubdomainText((s) => ({ ...s, [d.id]: e.target.value }))}
+                      onKeyDown={(e) => e.key === "Enter" && addSubdomain(d.id)} placeholder="+ sub-domain"
+                      style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, flex: 1, outline: "none", background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, ...sans, ...noSelect }} />
+                  </div>
+                </div>
+              ))}
+              <div style={{ paddingTop: 8, borderTop: `1px solid ${COLORS.panelBorder}` }}>
+                <div style={{ fontSize: 12, marginBottom: 8, color: COLORS.textFaint, ...sans }}>Add a domain</div>
+                {availableSuggestions.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                    {availableSuggestions.map((s) => (
+                      <button key={s.id} onClick={() => addDomain(s.label, s.id)} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 999, background: "none", border: `1px solid ${COLORS.panelBorder}`, color: COLORS.textMuted, ...sans }}>+ {s.label}</button>
+                    ))}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 6 }}>
+                  <input value={newDomainText} onChange={(e) => setNewDomainText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addDomain(newDomainText, null)}
+                    placeholder="Custom domain name" style={{ fontSize: 12, padding: "6px 10px", borderRadius: 6, flex: 1, outline: "none", background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, ...sans, ...noSelect }} />
+                  <button onClick={() => addDomain(newDomainText, null)} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 999, background: COLORS.text, color: COLORS.bg, border: "none", ...sans }}>Add</button>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -341,11 +447,21 @@ function Palimpsest() {
             <div style={{ width: 380, padding: 20, borderRadius: 12, display: "flex", flexDirection: "column", gap: 12, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }} onClick={(e) => e.stopPropagation()}>
               <div style={{ fontSize: 14, color: COLORS.textMuted, ...sans }}>New thought</div>
               <input autoFocus value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="One line — what's the view?"
-                style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans }} />
+                style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans, ...noSelect }} />
               <textarea value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} placeholder="Say more, and what prompted it, if you want." rows={4}
-                style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, resize: "none", background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans }} />
-              <input value={form.tags} onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))} placeholder="Tags, comma separated"
-                style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans }} />
+                style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, resize: "none", background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans, ...noSelect }} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <select value={form.domainId} onChange={(e) => setForm((f) => ({ ...f, domainId: e.target.value, subdomainId: "" }))}
+                  style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans }}>
+                  <option value={UNCATEGORIZED}>Uncategorized</option>
+                  {domains.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
+                </select>
+                <select value={form.subdomainId} onChange={(e) => setForm((f) => ({ ...f, subdomainId: e.target.value }))} disabled={form.domainId === UNCATEGORIZED}
+                  style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", opacity: form.domainId === UNCATEGORIZED ? 0.4 : 1, ...sans }}>
+                  <option value="">No sub-domain</option>
+                  {subdomains.filter((s) => s.domainId === form.domainId).map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
                 <button onClick={() => setShowAdd(false)} style={{ fontSize: 12, padding: "6px 12px", background: "none", border: "none", color: COLORS.textFaint, ...sans }}>Cancel</button>
                 <button onClick={addNode} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, background: COLORS.text, color: COLORS.bg, border: "none", fontWeight: 500, ...sans }}>Add</button>
