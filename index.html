@@ -2,7 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Palimpsest" />
+<meta name="theme-color" content="#0B0B10" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <title>Palimpsest</title>
 <style>
   :root {
@@ -11,7 +17,10 @@
     --support:#D8A657; --contradict:#B876C9; --supersede:#5B5A64;
   }
   * { box-sizing: border-box; }
-  html, body { margin:0; padding:0; width:100%; height:100%; background:var(--bg); }
+  html, body {
+    margin:0; padding:0; width:100%; height:100%; background:var(--bg);
+    position:fixed; overflow:hidden; overscroll-behavior:none;
+  }
   body {
     font-family: 'Iowan Old Style', Georgia, serif;
     color: var(--text);
@@ -20,9 +29,12 @@
   input, textarea, select { -webkit-user-select: text; user-select: text; }
   button { cursor: pointer; font-family: inherit; }
   .sans { font-family: system-ui, -apple-system, sans-serif; }
-  #app { width:100%; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+  #app {
+    width:100%; height:100vh; height:100dvh;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
 
-  #topbar { display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--panel-border); flex-shrink:0; }
+  #topbar { display:flex; align-items:center; gap:12px; padding:calc(12px + env(safe-area-inset-top)) 20px 12px; border-bottom:1px solid var(--panel-border); flex-shrink:0; }
   #brand { display:flex; flex-direction:column; line-height:1.2; margin-right:8px; }
   #brand .name { font-size:18px; font-weight:500; letter-spacing:0.3px; }
   #brand .count { font-size:12px; color:var(--text-faint); }
@@ -39,10 +51,10 @@
   #empty-state p { color:var(--text-muted); }
   #loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-faint); }
 
-  #legend { position:absolute; bottom:16px; left:16px; display:flex; gap:16px; padding:8px 12px; border-radius:8px; font-size:12px; background:var(--panel); border:1px solid var(--panel-border); color:var(--text-muted); }
+  #legend { position:absolute; bottom:calc(16px + env(safe-area-inset-bottom)); left:16px; display:flex; gap:16px; padding:8px 12px; border-radius:8px; font-size:12px; background:var(--panel); border:1px solid var(--panel-border); color:var(--text-muted); }
   #legend span { display:flex; align-items:center; gap:6px; }
   #legend i { width:10px; height:2px; display:inline-block; }
-  #credit { position:absolute; bottom:16px; right:16px; font-size:12px; color:var(--text-faint); }
+  #credit { position:absolute; bottom:calc(16px + env(safe-area-inset-bottom)); right:16px; font-size:12px; color:var(--text-faint); }
 
   #side-panel { position:absolute; top:0; right:0; height:100%; width:340px; display:flex; flex-direction:column; background:var(--panel); border-left:1px solid var(--panel-border); transform:translateX(100%); transition:transform .15s ease; }
   #side-panel.open { transform:translateX(0); }
