@@ -2,479 +2,549 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Palimpsest</title>
 <style>
-  html, body, #root { margin: 0; padding: 0; width: 100%; height: 100%; }
+  :root {
+    --bg:#0B0B10; --panel:#15151D; --panel-border:#26262F;
+    --text:#E9E6DF; --text-muted:#8B899A; --text-faint:#55535F;
+    --support:#D8A657; --contradict:#B876C9; --supersede:#5B5A64;
+  }
   * { box-sizing: border-box; }
-  body { font-family: 'Iowan Old Style', Georgia, serif; }
-  button { cursor: pointer; }
+  html, body { margin:0; padding:0; width:100%; height:100%; background:var(--bg); }
+  body {
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: var(--text);
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
+  input, textarea, select { -webkit-user-select: text; user-select: text; }
+  button { cursor: pointer; font-family: inherit; }
+  .sans { font-family: system-ui, -apple-system, sans-serif; }
+  #app { width:100%; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+  #topbar { display:flex; align-items:center; gap:12px; padding:12px 20px; border-bottom:1px solid var(--panel-border); flex-shrink:0; }
+  #brand { display:flex; flex-direction:column; line-height:1.2; margin-right:8px; }
+  #brand .name { font-size:18px; font-weight:500; letter-spacing:0.3px; }
+  #brand .count { font-size:12px; color:var(--text-faint); }
+  #searchbox { display:flex; align-items:center; gap:8px; padding:6px 12px; border-radius:999px; flex:1; max-width:320px; background:var(--panel); border:1px solid var(--panel-border); }
+  #searchbox svg { flex-shrink:0; }
+  #search-input { background:transparent; outline:none; border:none; font-size:14px; flex:1; color:var(--text); }
+  .btn-ghost { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; font-size:14px; background:var(--panel); border:1px solid var(--panel-border); color:var(--text-muted); }
+  .btn-solid { display:flex; align-items:center; gap:6px; padding:6px 14px; border-radius:999px; font-size:14px; background:var(--text); color:var(--bg); border:none; font-weight:500; }
+  #domains-btn { margin-left:auto; }
+
+  #canvas-wrap { flex:1; position:relative; overflow:hidden; }
+  #graph { display:block; }
+  #empty-state { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+  #empty-state p { color:var(--text-muted); }
+  #loading { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--text-faint); }
+
+  #legend { position:absolute; bottom:16px; left:16px; display:flex; gap:16px; padding:8px 12px; border-radius:8px; font-size:12px; background:var(--panel); border:1px solid var(--panel-border); color:var(--text-muted); }
+  #legend span { display:flex; align-items:center; gap:6px; }
+  #legend i { width:10px; height:2px; display:inline-block; }
+  #credit { position:absolute; bottom:16px; right:16px; font-size:12px; color:var(--text-faint); }
+
+  #side-panel { position:absolute; top:0; right:0; height:100%; width:340px; display:flex; flex-direction:column; background:var(--panel); border-left:1px solid var(--panel-border); transform:translateX(100%); transition:transform .15s ease; }
+  #side-panel.open { transform:translateX(0); }
+  .panel-header { display:flex; align-items:flex-start; justify-content:space-between; padding:16px; border-bottom:1px solid var(--panel-border); }
+  .panel-body { padding:16px; flex:1; overflow-y:auto; }
+  .panel-footer { padding:16px; border-top:1px solid var(--panel-border); }
+  .tag-btn { background:none; border:none; padding:0; }
+
+  .modal-backdrop { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.5); z-index:10; }
+  .modal-card { padding:20px; border-radius:12px; display:flex; flex-direction:column; gap:12px; background:var(--panel); border:1px solid var(--panel-border); }
+  .field { font-size:14px; padding:8px 12px; border-radius:6px; background:var(--bg); border:1px solid var(--panel-border); color:var(--text); outline:none; width:100%; }
+  textarea.field { resize:none; }
+  .row { display:flex; gap:8px; }
+  .link-btn { display:flex; align-items:center; gap:6px; font-size:12px; background:none; border:none; color:var(--text-muted); padding:0; }
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="app">
+  <div id="topbar">
+    <div id="brand"><span class="name">Palimpsest</span><span class="count sans">0 thoughts</span></div>
+    <div id="searchbox">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#55535F" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search-input" class="sans" placeholder="Search your thoughts…" />
+    </div>
+    <button id="domains-btn" class="btn-ghost sans">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill="currentColor"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill="currentColor"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="11" cy="18" r="2" fill="currentColor"/></svg>
+      Domains
+    </button>
+    <button id="add-btn" class="btn-solid sans">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      New thought
+    </button>
+  </div>
 
-<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <div id="canvas-wrap">
+    <div id="loading">Loading…</div>
+    <svg id="graph" hidden></svg>
+    <div id="empty-state" hidden>
+      <p>Nothing here yet.</p>
+      <button id="empty-add-btn" class="btn-ghost sans">Add your first thought</button>
+    </div>
+    <div id="legend" hidden>
+      <span><i style="background:var(--support)"></i>supports</span>
+      <span><i style="background:var(--contradict)"></i>contradicts</span>
+      <span><i style="background:var(--supersede)"></i>supersedes</span>
+    </div>
+    <div id="credit" class="sans">Jinnie × Claude</div>
+    <div id="side-panel"></div>
+  </div>
+
+  <div id="modal-root"></div>
+</div>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-<script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+(function () {
+  "use strict";
 
-<script type="text/babel" data-presets="react">
-const { useState, useEffect, useRef, useMemo } = React;
+  var COLORS = { support: "#D8A657", contradict: "#B876C9", supersede: "#5B5A64", text: "#E9E6DF", textMuted: "#8B899A", textFaint: "#55535F" };
+  var DOMAIN_ACCENTS = ["#D8A657", "#7FA8C9", "#8FBF8B", "#C98B7F", "#A896C9", "#7FC9BE", "#C9B57F", "#B87F9E"];
+  var STORAGE_KEY = "palimpsest:graph";
+  var UNCATEGORIZED = "uncategorized";
+  var DEFAULT_DOMAINS = [
+    { id: "career", label: "Career & Work" },
+    { id: "relationships", label: "Relationships & People" },
+    { id: "health", label: "Health & Body" },
+    { id: "growth", label: "Personal Growth" }
+  ];
+  var SUGGESTED_DOMAINS = [
+    { id: "money", label: "Money & Finances" },
+    { id: "politics", label: "Politics & Society" },
+    { id: "philosophy", label: "Philosophy & Meaning" },
+    { id: "culture", label: "Culture & Recreation" },
+    { id: "science", label: "Science & Technology" }
+  ];
 
-const COLORS = {
-  bg: "#0B0B10", panel: "#15151D", panelBorder: "#26262F",
-  text: "#E9E6DF", textMuted: "#8B899A", textFaint: "#55535F",
-  support: "#D8A657", contradict: "#B876C9", supersede: "#5B5A64",
-};
-const DOMAIN_ACCENTS = ["#D8A657", "#7FA8C9", "#8FBF8B", "#C98B7F", "#A896C9", "#7FC9BE", "#C9B57F", "#B87F9E"];
-const STORAGE_KEY = "palimpsest:graph";
-const UNCATEGORIZED = "uncategorized";
-const sans = { fontFamily: "system-ui, sans-serif" };
+  var state = {
+    nodes: [], edges: [], domains: DEFAULT_DOMAINS.slice(), subdomains: [],
+    positions: {}, selectedId: null, query: "", showAdd: false, showDomains: false,
+    linking: false, linkQuery: "", newDomainText: "", newSubdomainText: {}
+  };
+  var sim = null;
+  var dims = { width: 900, height: 600 };
 
-const DEFAULT_DOMAINS = [
-  { id: "career", label: "Career & Work" },
-  { id: "relationships", label: "Relationships & People" },
-  { id: "health", label: "Health & Body" },
-  { id: "growth", label: "Personal Growth" },
-];
-const SUGGESTED_DOMAINS = [
-  { id: "money", label: "Money & Finances" },
-  { id: "politics", label: "Politics & Society" },
-  { id: "philosophy", label: "Philosophy & Meaning" },
-  { id: "culture", label: "Culture & Recreation" },
-  { id: "science", label: "Science & Technology" },
-];
+  function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function formatDate(ts) { return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
+  function byId(arr, id) { return arr.find(function (x) { return x.id === id; }); }
 
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-function formatDate(ts) { return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); }
-
-function domainAnchor(domainId, domains, width, height) {
-  if (!domainId || domainId === UNCATEGORIZED) return { x: width / 2, y: height / 2 };
-  const idx = domains.findIndex((d) => d.id === domainId);
-  if (idx === -1) return { x: width / 2, y: height / 2 };
-  const angle = (idx / Math.max(domains.length, 1)) * 2 * Math.PI - Math.PI / 2;
-  const radius = Math.min(width, height) * 0.34;
-  return { x: width / 2 + radius * Math.cos(angle), y: height / 2 + radius * Math.sin(angle) };
-}
-function subdomainAnchor(subdomainId, subdomains, domains, width, height) {
-  const sd = subdomains.find((s) => s.id === subdomainId);
-  if (!sd) return null;
-  const base = domainAnchor(sd.domainId, domains, width, height);
-  const siblings = subdomains.filter((s) => s.domainId === sd.domainId);
-  const idx = Math.max(siblings.findIndex((s) => s.id === sd.id), 0);
-  const angle = (idx / Math.max(siblings.length, 1)) * 2 * Math.PI + 0.7;
-  const r = 58;
-  return { x: base.x + r * Math.cos(angle), y: base.y + r * Math.sin(angle) };
-}
-function nodeAnchor(n, domains, subdomains, width, height) {
-  if (n.subdomainId) {
-    const a = subdomainAnchor(n.subdomainId, subdomains, domains, width, height);
-    if (a) return a;
+  function domainAnchor(domainId) {
+    if (!domainId || domainId === UNCATEGORIZED) return { x: dims.width / 2, y: dims.height / 2 };
+    var idx = state.domains.findIndex(function (d) { return d.id === domainId; });
+    if (idx === -1) return { x: dims.width / 2, y: dims.height / 2 };
+    var angle = (idx / Math.max(state.domains.length, 1)) * 2 * Math.PI - Math.PI / 2;
+    var radius = Math.min(dims.width, dims.height) * 0.34;
+    return { x: dims.width / 2 + radius * Math.cos(angle), y: dims.height / 2 + radius * Math.sin(angle) };
   }
-  return domainAnchor(n.domainId, domains, width, height);
-}
+  function subdomainAnchor(subdomainId) {
+    var sd = byId(state.subdomains, subdomainId);
+    if (!sd) return null;
+    var base = domainAnchor(sd.domainId);
+    var siblings = state.subdomains.filter(function (s) { return s.domainId === sd.domainId; });
+    var idx = Math.max(siblings.findIndex(function (s) { return s.id === sd.id; }), 0);
+    var angle = (idx / Math.max(siblings.length, 1)) * 2 * Math.PI + 0.7;
+    var r = 58;
+    return { x: base.x + r * Math.cos(angle), y: base.y + r * Math.sin(angle) };
+  }
+  function nodeAnchor(n) {
+    if (n.subdomainId) { var a = subdomainAnchor(n.subdomainId); if (a) return a; }
+    return domainAnchor(n.domainId);
+  }
+  function domainAccent(domainId) {
+    var idx = state.domains.findIndex(function (d) { return d.id === domainId; });
+    return idx === -1 ? COLORS.textFaint : DOMAIN_ACCENTS[idx % DOMAIN_ACCENTS.length];
+  }
+  function edgeColor(type) { return type === "support" ? COLORS.support : type === "contradict" ? COLORS.contradict : COLORS.supersede; }
 
-const Icon = ({ children, size = 14, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{children}</svg>
-);
-const SearchIcon = (p) => <Icon {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></Icon>;
-const PlusIcon = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
-const XIcon = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>;
-const LinkIcon = (p) => <Icon {...p}><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></Icon>;
-const TrashIcon = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></Icon>;
-const ChevronIcon = (p) => <Icon {...p}><polyline points="9 18 15 12 9 6"/></Icon>;
-const SettingsIcon = (p) => <Icon {...p}><line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2" fill={p.color||"currentColor"}/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="16" cy="12" r="2" fill={p.color||"currentColor"}/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="11" cy="18" r="2" fill={p.color||"currentColor"}/></Icon>;
-
-function Palimpsest() {
-  const [nodes, setNodes] = useState([]);
-  const [edges, setEdges] = useState([]);
-  const [domains, setDomains] = useState(DEFAULT_DOMAINS);
-  const [subdomains, setSubdomains] = useState([]);
-  const [loaded, setLoaded] = useState(false);
-
-  const [positions, setPositions] = useState({});
-  const [dimensions, setDimensions] = useState({ width: 900, height: 600 });
-  const containerRef = useRef(null);
-
-  const [selectedId, setSelectedId] = useState(null);
-  const [query, setQuery] = useState("");
-  const [showAdd, setShowAdd] = useState(false);
-  const [showDomains, setShowDomains] = useState(false);
-  const [linking, setLinking] = useState(false);
-  const [linkQuery, setLinkQuery] = useState("");
-  const [newDomainText, setNewDomainText] = useState("");
-  const [newSubdomainText, setNewSubdomainText] = useState({});
-  const [form, setForm] = useState({ title: "", body: "", domainId: DEFAULT_DOMAINS[0].id, subdomainId: "" });
-
-  useEffect(() => {
+  function persist() {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes: state.nodes, edges: state.edges, domains: state.domains, subdomains: state.subdomains })); } catch (e) {}
+  }
+  function load() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      var raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
-        const data = JSON.parse(raw);
-        setNodes(data.nodes || []);
-        setEdges(data.edges || []);
-        setDomains(data.domains && data.domains.length ? data.domains : DEFAULT_DOMAINS);
-        setSubdomains(data.subdomains || []);
+        var data = JSON.parse(raw);
+        state.nodes = data.nodes || [];
+        state.edges = data.edges || [];
+        state.domains = (data.domains && data.domains.length) ? data.domains : DEFAULT_DOMAINS.slice();
+        state.subdomains = data.subdomains || [];
       }
     } catch (e) {}
-    setLoaded(true);
-  }, []);
+  }
 
-  useEffect(() => {
-    if (!loaded) return;
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges, domains, subdomains })); } catch (e) {}
-  }, [nodes, edges, domains, subdomains, loaded]);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      const { width, height } = entries[0].contentRect;
-      setDimensions({ width, height });
+  // ---------- simulation ----------
+  function restartSim() {
+    if (sim) sim.stop();
+    var simNodes = state.nodes.map(function (n) {
+      var p = state.positions[n.id];
+      return {
+        id: n.id, domainId: n.domainId, subdomainId: n.subdomainId, status: n.status,
+        x: p ? p.x : dims.width / 2 + (Math.random() - 0.5) * 120,
+        y: p ? p.y : dims.height / 2 + (Math.random() - 0.5) * 120
+      };
     });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+    var simEdges = state.edges.map(function (e) { return { id: e.id, source: e.source, target: e.target, type: e.type }; });
 
-  const nodesById = useMemo(() => Object.fromEntries(nodes.map((n) => [n.id, n])), [nodes]);
-  const domainsById = useMemo(() => Object.fromEntries(domains.map((d) => [d.id, d])), [domains]);
-  const subdomainsById = useMemo(() => Object.fromEntries(subdomains.map((s) => [s.id, s])), [subdomains]);
-
-  useEffect(() => {
-    if (!loaded) return;
-    const { width, height } = dimensions;
-    if (!width || !height) return;
-    const simNodes = nodes.map((n) => ({
-      id: n.id, domainId: n.domainId, subdomainId: n.subdomainId, status: n.status,
-      x: positions[n.id]?.x ?? width / 2 + (Math.random() - 0.5) * 120,
-      y: positions[n.id]?.y ?? height / 2 + (Math.random() - 0.5) * 120,
-    }));
-    const simEdges = edges.map((e) => ({ ...e }));
-    const sim = d3.forceSimulation(simNodes)
+    sim = d3.forceSimulation(simNodes)
       .force("charge", d3.forceManyBody().strength(-200))
-      .force("collide", d3.forceCollide((d) => (d.status === "superseded" ? 18 : 28)))
-      .force("link", d3.forceLink(simEdges).id((d) => d.id).distance(80).strength(0.2))
-      .force("x", d3.forceX((d) => nodeAnchor(d, domains, subdomains, width, height).x).strength((d) => (d.subdomainId ? 0.2 : 0.05)))
-      .force("y", d3.forceY((d) => nodeAnchor(d, domains, subdomains, width, height).y).strength((d) => (d.subdomainId ? 0.2 : 0.05)))
-      .on("tick", () => {
-        const pos = {};
-        simNodes.forEach((n) => (pos[n.id] = { x: n.x, y: n.y }));
-        setPositions(pos);
+      .force("collide", d3.forceCollide(function (d) { return d.status === "superseded" ? 18 : 28; }))
+      .force("link", d3.forceLink(simEdges).id(function (d) { return d.id; }).distance(80).strength(0.2))
+      .force("x", d3.forceX(function (d) { return nodeAnchor(d).x; }).strength(function (d) { return d.subdomainId ? 0.2 : 0.05; }))
+      .force("y", d3.forceY(function (d) { return nodeAnchor(d).y; }).strength(function (d) { return d.subdomainId ? 0.2 : 0.05; }))
+      .on("tick", function () {
+        var pos = {};
+        simNodes.forEach(function (n) { pos[n.id] = { x: n.x, y: n.y }; });
+        state.positions = pos;
+        renderGraph();
       });
-    return () => sim.stop();
-  }, [nodes, edges, domains, subdomains, loaded, dimensions.width, dimensions.height]);
-
-  const matchedIds = useMemo(() => {
-    if (!query.trim()) return null;
-    const q = query.toLowerCase();
-    return new Set(nodes.filter((n) =>
-      n.title.toLowerCase().includes(q) || n.body.toLowerCase().includes(q) ||
-      (domainsById[n.domainId]?.label || "").toLowerCase().includes(q) ||
-      (subdomainsById[n.subdomainId]?.label || "").toLowerCase().includes(q)
-    ).map((n) => n.id));
-  }, [query, nodes, domainsById, subdomainsById]);
-
-  const selected = selectedId ? nodesById[selectedId] : null;
-  const connectedEdges = useMemo(() => {
-    if (!selected) return [];
-    return edges.filter((e) => e.source === selected.id || e.target === selected.id);
-  }, [edges, selected]);
-
-  function addNode() {
-    if (!form.title.trim()) return;
-    const node = {
-      id: uid(), title: form.title.trim(), body: form.body.trim(),
-      domainId: form.domainId || UNCATEGORIZED, subdomainId: form.subdomainId || null,
-      status: "active", supersededBy: null, createdAt: Date.now(),
-    };
-    setNodes((ns) => [...ns, node]);
-    setForm({ title: "", body: "", domainId: domains[0]?.id || UNCATEGORIZED, subdomainId: "" });
-    setShowAdd(false);
-    setSelectedId(node.id);
   }
 
-  function deleteNode(id) {
-    setNodes((ns) => ns.filter((n) => n.id !== id).map((n) => (n.supersededBy === id ? { ...n, supersededBy: null, status: "active" } : n)));
-    setEdges((es) => es.filter((e) => e.source !== id && e.target !== id));
-    if (selectedId === id) setSelectedId(null);
-  }
+  // ---------- graph rendering ----------
+  function renderGraph() {
+    var svg = document.getElementById("graph");
+    var loading = document.getElementById("loading");
+    var empty = document.getElementById("empty-state");
+    var legend = document.getElementById("legend");
+    loading.hidden = true;
 
-  function addLink(targetId, type) {
-    if (!selected) return;
-    const edge = { id: uid(), source: selected.id, target: targetId, type };
-    setEdges((es) => [...es, edge]);
-    if (type === "supersedes") {
-      setNodes((ns) => ns.map((n) => (n.id === targetId ? { ...n, status: "superseded", supersededBy: selected.id } : n)));
+    if (state.nodes.length === 0) {
+      svg.hidden = true; legend.hidden = true; empty.hidden = false;
+      return;
     }
-    setLinking(false);
-    setLinkQuery("");
+    empty.hidden = true; svg.hidden = false; legend.hidden = false;
+    svg.setAttribute("width", dims.width);
+    svg.setAttribute("height", dims.height);
+
+    var q = state.query.trim().toLowerCase();
+    var matched = null;
+    if (q) {
+      matched = new Set();
+      state.nodes.forEach(function (n) {
+        var dom = byId(state.domains, n.domainId);
+        var sub = byId(state.subdomains, n.subdomainId);
+        var hay = (n.title + " " + n.body + " " + (dom ? dom.label : "") + " " + (sub ? sub.label : "")).toLowerCase();
+        if (hay.indexOf(q) !== -1) matched.add(n.id);
+      });
+    }
+
+    var svgHtml = "";
+
+    svgHtml += '<g>';
+    state.domains.forEach(function (d) {
+      var a = domainAnchor(d.id);
+      svgHtml += '<text x="' + a.x + '" y="' + (a.y - 46) + '" text-anchor="middle" font-size="11" letter-spacing="1" fill="' + domainAccent(d.id) + '" opacity="0.55" class="sans" style="pointer-events:none;text-transform:uppercase">' + esc(d.label) + '</text>';
+    });
+    state.subdomains.forEach(function (s) {
+      if (!state.nodes.some(function (n) { return n.subdomainId === s.id; })) return;
+      var a = subdomainAnchor(s.id);
+      if (!a) return;
+      svgHtml += '<text x="' + a.x + '" y="' + (a.y - 24) + '" text-anchor="middle" font-size="9.5" fill="' + COLORS.textFaint + '" opacity="0.7" class="sans" style="pointer-events:none">' + esc(s.label) + '</text>';
+    });
+    svgHtml += '</g>';
+
+    svgHtml += '<g>';
+    state.edges.forEach(function (e) {
+      var s = state.positions[e.source], t = state.positions[e.target];
+      if (!s || !t) return;
+      var dimmed = matched && !(matched.has(e.source) || matched.has(e.target));
+      var dash = e.type === "contradict" ? "3 4" : e.type === "supersedes" ? "1 3" : "none";
+      var op = dimmed ? 0.08 : (e.type === "supersedes" ? 0.35 : 0.55);
+      svgHtml += '<line x1="' + s.x + '" y1="' + s.y + '" x2="' + t.x + '" y2="' + t.y + '" stroke="' + edgeColor(e.type) + '" stroke-width="' + (e.type === "supersedes" ? 1.25 : 1.5) + '" stroke-dasharray="' + dash + '" opacity="' + op + '"></line>';
+    });
+    svgHtml += '</g>';
+
+    svgHtml += '<g>';
+    state.nodes.forEach(function (n) {
+      var p = state.positions[n.id];
+      if (!p) return;
+      var isSuperseded = n.status === "superseded";
+      var isSelected = state.selectedId === n.id;
+      var dimmed = matched && !matched.has(n.id);
+      var r = isSuperseded ? 5 : isSelected ? 9 : n.subdomainId ? 6 : 7.5;
+      var fill = isSuperseded ? COLORS.supersede : isSelected ? COLORS.support : domainAccent(n.domainId);
+      var opacity = dimmed ? 0.15 : isSuperseded ? 0.45 : 1;
+      var title = n.title.length > 34 ? n.title.slice(0, 34) + "…" : n.title;
+      svgHtml += '<g data-node-id="' + n.id + '" transform="translate(' + p.x + ',' + p.y + ')" style="cursor:pointer" opacity="' + opacity + '">' +
+        '<circle r="' + r + '" fill="' + fill + '" stroke="' + (isSelected ? COLORS.support : "none") + '" stroke-width="2"></circle>' +
+        '<text x="' + (r + 6) + '" y="4" font-size="12" fill="' + (isSuperseded ? COLORS.textFaint : COLORS.textMuted) + '" class="sans" style="pointer-events:none">' + esc(title) + '</text>' +
+        '</g>';
+    });
+    svgHtml += '</g>';
+
+    svg.innerHTML = svgHtml;
   }
 
-  const linkCandidates = useMemo(() => {
-    if (!selected) return [];
-    const q = linkQuery.toLowerCase();
-    return nodes.filter((n) => n.id !== selected.id && (q === "" || n.title.toLowerCase().includes(q))).slice(0, 8);
-  }, [nodes, selected, linkQuery]);
+  // ---------- side panel ----------
+  function renderSidePanel() {
+    var panel = document.getElementById("side-panel");
+    var n = byId(state.nodes, state.selectedId);
+    if (!n) { panel.classList.remove("open"); panel.innerHTML = ""; return; }
 
-  const edgeColor = (type) => (type === "support" ? COLORS.support : type === "contradict" ? COLORS.contradict : COLORS.supersede);
-  const domainAccent = (domainId) => {
-    const idx = domains.findIndex((d) => d.id === domainId);
-    return idx === -1 ? COLORS.textFaint : DOMAIN_ACCENTS[idx % DOMAIN_ACCENTS.length];
-  };
+    var dom = byId(state.domains, n.domainId);
+    var sub = n.subdomainId ? byId(state.subdomains, n.subdomainId) : null;
+    var connected = state.edges.filter(function (e) { return e.source === n.id || e.target === n.id; });
 
+    var html = '<div class="panel-header">' +
+      '<div><div class="sans" style="font-size:12px;margin-bottom:4px;color:var(--text-faint)">' + formatDate(n.createdAt) + (n.status === "superseded" ? " · superseded" : "") + '</div>' +
+      '<div style="font-size:16px;line-height:1.3">' + esc(n.title) + '</div></div>' +
+      '<button id="panel-close" style="background:none;border:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + COLORS.textFaint + '" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>' +
+      '</div><div class="panel-body">';
+
+    if (n.body) html += '<p class="sans" style="font-size:14px;line-height:1.6;margin:0 0 12px;color:var(--text-muted);-webkit-user-select:text;user-select:text">' + esc(n.body) + '</p>';
+
+    html += '<div class="sans" style="font-size:12px;margin-bottom:16px;display:flex;align-items:center;gap:4px;color:' + domainAccent(n.domainId) + '">' + esc(dom ? dom.label : "Uncategorized");
+    if (sub) html += ' <span style="color:var(--text-faint)">›</span> <span style="color:var(--text-muted)">' + esc(sub.label) + '</span>';
+    html += '</div>';
+
+    if (connected.length) {
+      html += '<div style="margin-bottom:16px"><div class="sans" style="font-size:12px;margin-bottom:8px;color:var(--text-faint)">Connections</div><div style="display:flex;flex-direction:column;gap:6px">';
+      connected.forEach(function (e) {
+        var otherId = e.source === n.id ? e.target : e.source;
+        var other = byId(state.nodes, otherId);
+        if (!other) return;
+        var verb = e.type === "supersedes" ? (e.source === n.id ? "supersedes" : "superseded by") : e.type;
+        html += '<button data-goto="' + other.id + '" class="sans" style="display:flex;align-items:center;gap:8px;font-size:12px;text-align:left;padding:6px 8px;border-radius:6px;background:var(--bg);border:none;color:var(--text);width:100%">' +
+          '<span style="color:' + edgeColor(e.type) + ';white-space:nowrap">' + verb + '</span>' +
+          '<span style="color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(other.title) + '</span></button>';
+      });
+      html += '</div></div>';
+    }
+
+    if (state.linking) {
+      var q = state.linkQuery.toLowerCase();
+      var candidates = state.nodes.filter(function (c) { return c.id !== n.id && (q === "" || c.title.toLowerCase().indexOf(q) !== -1); }).slice(0, 8);
+      html += '<div style="margin-bottom:16px">' +
+        '<input id="link-search" class="field sans" style="margin-bottom:8px" placeholder="Find a thought…" value="' + esc(state.linkQuery) + '" />' +
+        '<div style="display:flex;flex-direction:column;gap:4px;max-height:160px;overflow-y:auto">';
+      candidates.forEach(function (c) {
+        html += '<div style="padding:6px 8px;border-radius:6px;background:var(--bg)"><div class="sans" style="font-size:12px;margin-bottom:6px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(c.title) + '</div><div style="display:flex;gap:4px">' +
+          '<button data-link="' + c.id + '" data-type="support" class="sans" style="font-size:12px;padding:2px 8px;border-radius:999px;background:transparent;color:' + COLORS.support + ';border:1px solid ' + COLORS.support + '">supports</button>' +
+          '<button data-link="' + c.id + '" data-type="contradict" class="sans" style="font-size:12px;padding:2px 8px;border-radius:999px;background:transparent;color:' + COLORS.contradict + ';border:1px solid ' + COLORS.contradict + '">contradicts</button>' +
+          '<button data-link="' + c.id + '" data-type="supersedes" class="sans" style="font-size:12px;padding:2px 8px;border-radius:999px;background:transparent;color:' + COLORS.supersede + ';border:1px solid ' + COLORS.supersede + '">supersedes</button>' +
+          '</div></div>';
+      });
+      html += '</div><button id="link-cancel" class="sans" style="font-size:12px;margin-top:8px;background:none;border:none;color:var(--text-faint)">Cancel</button></div>';
+    } else {
+      html += '<button id="link-start" class="link-btn sans" style="margin-bottom:16px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Link to another thought</button>';
+    }
+
+    html += '</div><div class="panel-footer"><button id="node-delete" class="link-btn sans"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Delete</button></div>';
+
+    panel.innerHTML = html;
+    panel.classList.add("open");
+
+    document.getElementById("panel-close").onclick = function () { state.selectedId = null; state.linking = false; renderSidePanel(); renderGraph(); };
+    document.getElementById("node-delete").onclick = function () { deleteNode(n.id); };
+    panel.querySelectorAll("[data-goto]").forEach(function (b) { b.onclick = function () { state.selectedId = b.getAttribute("data-goto"); state.linking = false; renderSidePanel(); renderGraph(); }; });
+
+    if (state.linking) {
+      var input = document.getElementById("link-search");
+      input.oninput = function () { state.linkQuery = input.value; renderSidePanel(); };
+      input.focus(); input.setSelectionRange(input.value.length, input.value.length);
+      document.getElementById("link-cancel").onclick = function () { state.linking = false; state.linkQuery = ""; renderSidePanel(); };
+      panel.querySelectorAll("[data-link]").forEach(function (b) {
+        b.onclick = function () { addLink(n.id, b.getAttribute("data-link"), b.getAttribute("data-type")); };
+      });
+    } else {
+      document.getElementById("link-start").onclick = function () { state.linking = true; renderSidePanel(); };
+    }
+  }
+
+  // ---------- domains modal ----------
+  function renderDomainsModal() {
+    var root = document.getElementById("modal-root");
+    if (!state.showDomains) { if (!state.showAdd) root.innerHTML = ""; return; }
+
+    var suggestions = SUGGESTED_DOMAINS.filter(function (s) { return !state.domains.some(function (d) { return d.id === s.id; }); });
+
+    var html = '<div class="modal-backdrop" id="domains-backdrop"><div class="modal-card" style="width:400px;max-height:80vh;overflow-y:auto" onclick="event.stopPropagation()">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between"><div class="sans" style="font-size:14px;color:var(--text-muted)">Domains</div>' +
+      '<button id="domains-close" style="background:none;border:none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + COLORS.textFaint + '" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';
+
+    state.domains.forEach(function (d) {
+      html += '<div style="display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:8px;background:var(--bg);margin-top:12px">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between"><span style="color:' + domainAccent(d.id) + ';font-size:14px">' + esc(d.label) + '</span>' +
+        '<button data-del-domain="' + d.id + '" style="background:none;border:none"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + COLORS.textFaint + '" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div>';
+      state.subdomains.filter(function (s) { return s.domainId === d.id; }).forEach(function (s) {
+        html += '<div class="sans" style="display:flex;align-items:center;justify-content:space-between;padding-left:12px;font-size:12px;color:var(--text-muted)"><span>' + esc(s.label) + '</span>' +
+          '<button data-del-sub="' + s.id + '" style="background:none;border:none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + COLORS.textFaint + '" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button></div>';
+      });
+      html += '<div style="display:flex;gap:4px;margin-top:4px"><input data-sub-input="' + d.id + '" class="field sans" style="font-size:12px;padding:4px 8px" placeholder="+ sub-domain" value="' + esc(state.newSubdomainText[d.id] || "") + '" /></div></div>';
+    });
+
+    html += '<div style="padding-top:12px;margin-top:12px;border-top:1px solid var(--panel-border)"><div class="sans" style="font-size:12px;margin-bottom:8px;color:var(--text-faint)">Add a domain</div>';
+    if (suggestions.length) {
+      html += '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">';
+      suggestions.forEach(function (s) {
+        html += '<button data-add-suggested="' + s.id + '" class="sans" style="font-size:12px;padding:4px 10px;border-radius:999px;background:none;border:1px solid var(--panel-border);color:var(--text-muted)">+ ' + esc(s.label) + '</button>';
+      });
+      html += '</div>';
+    }
+    html += '<div style="display:flex;gap:6px"><input id="new-domain-input" class="field sans" style="font-size:12px" placeholder="Custom domain name" value="' + esc(state.newDomainText) + '" />' +
+      '<button id="add-domain-btn" class="sans" style="font-size:12px;padding:6px 14px;border-radius:999px;background:var(--text);color:var(--bg);border:none">Add</button></div></div>' +
+      '</div></div>';
+
+    root.innerHTML = html;
+
+    document.getElementById("domains-backdrop").onclick = function () { state.showDomains = false; renderDomainsModal(); };
+    document.getElementById("domains-close").onclick = function () { state.showDomains = false; renderDomainsModal(); };
+    root.querySelectorAll("[data-del-domain]").forEach(function (b) { b.onclick = function () { deleteDomain(b.getAttribute("data-del-domain")); }; });
+    root.querySelectorAll("[data-del-sub]").forEach(function (b) { b.onclick = function () { deleteSubdomain(b.getAttribute("data-del-sub")); }; });
+    root.querySelectorAll("[data-sub-input]").forEach(function (inp) {
+      var domainId = inp.getAttribute("data-sub-input");
+      inp.oninput = function () { state.newSubdomainText[domainId] = inp.value; };
+      inp.onkeydown = function (e) { if (e.key === "Enter") addSubdomain(domainId); };
+    });
+    root.querySelectorAll("[data-add-suggested]").forEach(function (b) {
+      b.onclick = function () {
+        var s = byId(SUGGESTED_DOMAINS, b.getAttribute("data-add-suggested"));
+        addDomain(s.label, s.id);
+      };
+    });
+    var newDomainInput = document.getElementById("new-domain-input");
+    newDomainInput.oninput = function () { state.newDomainText = newDomainInput.value; };
+    newDomainInput.onkeydown = function (e) { if (e.key === "Enter") addDomain(state.newDomainText, null); };
+    document.getElementById("add-domain-btn").onclick = function () { addDomain(state.newDomainText, null); };
+  }
+
+  // ---------- add-thought modal ----------
+  function renderAddModal() {
+    var root = document.getElementById("modal-root");
+    if (!state.showAdd) { if (!state.showDomains) root.innerHTML = ""; return; }
+
+    function subdomainOptions(domainId) {
+      return '<option value="">No sub-domain</option>' + state.subdomains.filter(function (s) { return s.domainId === domainId; })
+        .map(function (s) { return '<option value="' + s.id + '">' + esc(s.label) + '</option>'; }).join("");
+    }
+    var defaultDomain = state.domains[0] ? state.domains[0].id : UNCATEGORIZED;
+
+    var html = '<div class="modal-backdrop" id="add-backdrop"><div class="modal-card" style="width:380px" onclick="event.stopPropagation()">' +
+      '<div class="sans" style="font-size:14px;color:var(--text-muted)">New thought</div>' +
+      '<input id="add-title" class="field" placeholder="One line — what\u2019s the view?" />' +
+      '<textarea id="add-body" class="field" rows="4" placeholder="Say more, and what prompted it, if you want."></textarea>' +
+      '<div class="row"><select id="add-domain" class="field sans"><option value="' + UNCATEGORIZED + '">Uncategorized</option>' +
+      state.domains.map(function (d) { return '<option value="' + d.id + '"' + (d.id === defaultDomain ? " selected" : "") + '>' + esc(d.label) + '</option>'; }).join("") + '</select>' +
+      '<select id="add-subdomain" class="field sans">' + subdomainOptions(defaultDomain) + '</select></div>' +
+      '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px">' +
+      '<button id="add-cancel" class="sans" style="font-size:12px;padding:6px 12px;background:none;border:none;color:var(--text-faint)">Cancel</button>' +
+      '<button id="add-submit" class="sans" style="font-size:12px;padding:6px 12px;border-radius:999px;background:var(--text);color:var(--bg);border:none;font-weight:500">Add</button>' +
+      '</div></div></div>';
+
+    root.innerHTML = html;
+    var domainSel = document.getElementById("add-domain");
+    var subSel = document.getElementById("add-subdomain");
+    domainSel.onchange = function () { subSel.innerHTML = subdomainOptions(domainSel.value); subSel.disabled = domainSel.value === UNCATEGORIZED; };
+    subSel.disabled = domainSel.value === UNCATEGORIZED;
+
+    document.getElementById("add-backdrop").onclick = function () { state.showAdd = false; renderAddModal(); };
+    document.getElementById("add-cancel").onclick = function () { state.showAdd = false; renderAddModal(); };
+    document.getElementById("add-title").focus();
+    document.getElementById("add-submit").onclick = function () {
+      var title = document.getElementById("add-title").value.trim();
+      if (!title) return;
+      var node = {
+        id: uid(), title: title, body: document.getElementById("add-body").value.trim(),
+        domainId: domainSel.value || UNCATEGORIZED, subdomainId: subSel.value || null,
+        status: "active", supersededBy: null, createdAt: Date.now()
+      };
+      state.nodes.push(node);
+      state.showAdd = false;
+      state.selectedId = node.id;
+      persist(); restartSim(); renderAddModal(); renderSidePanel(); updateCount();
+    };
+  }
+
+  // ---------- mutations ----------
+  function deleteNode(id) {
+    state.nodes = state.nodes.filter(function (n) { return n.id !== id; }).map(function (n) {
+      return n.supersededBy === id ? Object.assign({}, n, { supersededBy: null, status: "active" }) : n;
+    });
+    state.edges = state.edges.filter(function (e) { return e.source !== id && e.target !== id; });
+    if (state.selectedId === id) state.selectedId = null;
+    persist(); restartSim(); renderSidePanel(); updateCount();
+  }
+  function addLink(fromId, targetId, type) {
+    state.edges.push({ id: uid(), source: fromId, target: targetId, type: type });
+    if (type === "supersedes") {
+      state.nodes = state.nodes.map(function (n) { return n.id === targetId ? Object.assign({}, n, { status: "superseded", supersededBy: fromId }) : n; });
+    }
+    state.linking = false; state.linkQuery = "";
+    persist(); restartSim(); renderSidePanel();
+  }
   function deleteDomain(id) {
     if (!window.confirm("Delete this domain? Entries inside it will move to Uncategorized.")) return;
-    const subIds = new Set(subdomains.filter((s) => s.domainId === id).map((s) => s.id));
-    setDomains((ds) => ds.filter((d) => d.id !== id));
-    setSubdomains((ss) => ss.filter((s) => s.domainId !== id));
-    setNodes((ns) => ns.map((n) => (n.domainId === id || subIds.has(n.subdomainId) ? { ...n, domainId: UNCATEGORIZED, subdomainId: null } : n)));
+    var subIds = {};
+    state.subdomains.filter(function (s) { return s.domainId === id; }).forEach(function (s) { subIds[s.id] = true; });
+    state.domains = state.domains.filter(function (d) { return d.id !== id; });
+    state.subdomains = state.subdomains.filter(function (s) { return s.domainId !== id; });
+    state.nodes = state.nodes.map(function (n) {
+      return (n.domainId === id || subIds[n.subdomainId]) ? Object.assign({}, n, { domainId: UNCATEGORIZED, subdomainId: null }) : n;
+    });
+    persist(); restartSim(); renderDomainsModal();
   }
   function deleteSubdomain(id) {
     if (!window.confirm("Delete this sub-domain? Its entries stay in the parent domain.")) return;
-    setSubdomains((ss) => ss.filter((s) => s.id !== id));
-    setNodes((ns) => ns.map((n) => (n.subdomainId === id ? { ...n, subdomainId: null } : n)));
+    state.subdomains = state.subdomains.filter(function (s) { return s.id !== id; });
+    state.nodes = state.nodes.map(function (n) { return n.subdomainId === id ? Object.assign({}, n, { subdomainId: null }) : n; });
+    persist(); restartSim(); renderDomainsModal();
   }
   function addDomain(label, presetId) {
-    const trimmed = label.trim();
+    var trimmed = (label || "").trim();
     if (!trimmed) return;
-    const id = presetId || uid();
-    if (domains.some((d) => d.id === id)) return;
-    setDomains((ds) => [...ds, { id, label: trimmed }]);
-    setNewDomainText("");
+    var id = presetId || uid();
+    if (state.domains.some(function (d) { return d.id === id; })) return;
+    state.domains.push({ id: id, label: trimmed });
+    state.newDomainText = "";
+    persist(); restartSim(); renderDomainsModal();
   }
   function addSubdomain(domainId) {
-    const text = (newSubdomainText[domainId] || "").trim();
+    var text = (state.newSubdomainText[domainId] || "").trim();
     if (!text) return;
-    setSubdomains((ss) => [...ss, { id: uid(), domainId, label: text }]);
-    setNewSubdomainText((s) => ({ ...s, [domainId]: "" }));
+    state.subdomains.push({ id: uid(), domainId: domainId, label: text });
+    state.newSubdomainText[domainId] = "";
+    persist(); renderDomainsModal();
   }
 
-  const availableSuggestions = SUGGESTED_DOMAINS.filter((s) => !domains.some((d) => d.id === s.id));
-  const noSelect = { userSelect: "text", WebkitUserSelect: "text" };
+  function updateCount() {
+    document.querySelector("#brand .count").textContent = state.nodes.length + (state.nodes.length === 1 ? " thought" : " thoughts");
+  }
 
-  return (
-    <div style={{ width: "100%", height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden", background: COLORS.bg, color: COLORS.text, userSelect: "none", WebkitUserSelect: "none", WebkitTouchCallout: "none" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 20px", borderBottom: `1px solid ${COLORS.panelBorder}`, flexShrink: 0 }}>
-        <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.2, marginRight: 8 }}>
-          <span style={{ fontSize: 18, fontWeight: 500, letterSpacing: 0.3 }}>Palimpsest</span>
-          <span style={{ fontSize: 12, color: COLORS.textFaint, ...sans }}>{nodes.length} thought{nodes.length === 1 ? "" : "s"}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", borderRadius: 999, flex: 1, maxWidth: 320, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }}>
-          <SearchIcon size={14} color={COLORS.textFaint} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search your thoughts…"
-            style={{ background: "transparent", outline: "none", border: "none", fontSize: 14, flex: 1, color: COLORS.text, ...sans, ...noSelect }} />
-        </div>
-        <button onClick={() => setShowDomains(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, fontSize: 14, marginLeft: "auto", background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.textMuted, ...sans }}>
-          <SettingsIcon size={14} /> Domains
-        </button>
-        <button onClick={() => setShowAdd(true)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 999, fontSize: 14, background: COLORS.text, color: COLORS.bg, border: "none", fontWeight: 500, ...sans }}>
-          <PlusIcon size={14} /> New thought
-        </button>
-      </div>
+  // ---------- init ----------
+  function measure() {
+    var wrap = document.getElementById("canvas-wrap");
+    dims = { width: wrap.clientWidth, height: wrap.clientHeight };
+  }
 
-      <div style={{ flex: 1, position: "relative", overflow: "hidden" }} ref={containerRef}>
-        {!loaded ? (
-          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: COLORS.textFaint }}>Loading…</div>
-        ) : nodes.length === 0 ? (
-          <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-            <p style={{ color: COLORS.textMuted }}>Nothing here yet.</p>
-            <button onClick={() => setShowAdd(true)} style={{ padding: "8px 16px", borderRadius: 999, fontSize: 14, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, ...sans }}>Add your first thought</button>
-          </div>
-        ) : (
-          <svg width={dimensions.width} height={dimensions.height}>
-            <g>
-              {domains.map((d) => {
-                const a = domainAnchor(d.id, domains, dimensions.width, dimensions.height);
-                return <text key={d.id} x={a.x} y={a.y - 46} textAnchor="middle" fontSize={11} letterSpacing={1} fill={domainAccent(d.id)} opacity={0.55} style={{ ...sans, pointerEvents: "none", textTransform: "uppercase" }}>{d.label}</text>;
-              })}
-              {subdomains.map((s) => {
-                if (!nodes.some((n) => n.subdomainId === s.id)) return null;
-                const a = subdomainAnchor(s.id, subdomains, domains, dimensions.width, dimensions.height);
-                if (!a) return null;
-                return <text key={s.id} x={a.x} y={a.y - 24} textAnchor="middle" fontSize={9.5} fill={COLORS.textFaint} opacity={0.7} style={{ ...sans, pointerEvents: "none" }}>{s.label}</text>;
-              })}
-            </g>
-            <g>
-              {edges.map((e) => {
-                const s = positions[e.source], t = positions[e.target];
-                if (!s || !t) return null;
-                const dimmed = matchedIds && !(matchedIds.has(e.source) || matchedIds.has(e.target));
-                return <line key={e.id} x1={s.x} y1={s.y} x2={t.x} y2={t.y} stroke={edgeColor(e.type)}
-                  strokeWidth={e.type === "supersedes" ? 1.25 : 1.5}
-                  strokeDasharray={e.type === "contradict" ? "3 4" : e.type === "supersedes" ? "1 3" : "none"}
-                  opacity={dimmed ? 0.08 : e.type === "supersedes" ? 0.35 : 0.55} />;
-              })}
-            </g>
-            <g>
-              {nodes.map((n) => {
-                const p = positions[n.id];
-                if (!p) return null;
-                const isSuperseded = n.status === "superseded";
-                const isSelected = selectedId === n.id;
-                const dimmed = matchedIds && !matchedIds.has(n.id);
-                const r = isSuperseded ? 5 : isSelected ? 9 : n.subdomainId ? 6 : 7.5;
-                return (
-                  <g key={n.id} transform={`translate(${p.x},${p.y})`} onClick={() => setSelectedId(n.id)} style={{ cursor: "pointer" }} opacity={dimmed ? 0.15 : isSuperseded ? 0.45 : 1}>
-                    <circle r={r} fill={isSuperseded ? COLORS.supersede : isSelected ? COLORS.support : domainAccent(n.domainId)} stroke={isSelected ? COLORS.support : "none"} strokeWidth={2} />
-                    <text x={r + 6} y={4} fontSize={12} fill={isSuperseded ? COLORS.textFaint : COLORS.textMuted} style={{ ...sans, pointerEvents: "none" }}>{n.title.length > 34 ? n.title.slice(0, 34) + "…" : n.title}</text>
-                  </g>
-                );
-              })}
-            </g>
-          </svg>
-        )}
+  function init() {
+    load();
+    measure();
+    updateCount();
+    renderGraph();
+    restartSim();
 
-        {nodes.length > 0 && (
-          <div style={{ position: "absolute", bottom: 16, left: 16, display: "flex", gap: 16, padding: "8px 12px", borderRadius: 8, fontSize: 12, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.textMuted, ...sans }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 2, background: COLORS.support, display: "inline-block" }} /> supports</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 2, background: COLORS.contradict, display: "inline-block" }} /> contradicts</span>
-            <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ width: 10, height: 2, background: COLORS.supersede, display: "inline-block" }} /> supersedes</span>
-          </div>
-        )}
-        <div style={{ position: "absolute", bottom: 16, right: 16, fontSize: 12, color: COLORS.textFaint, ...sans }}>Jinnie × Claude</div>
+    window.addEventListener("resize", function () { measure(); restartSim(); });
+    if (window.ResizeObserver) {
+      new ResizeObserver(function () { measure(); restartSim(); }).observe(document.getElementById("canvas-wrap"));
+    }
 
-        {selected && (
-          <div style={{ position: "absolute", top: 0, right: 0, height: "100%", width: 340, display: "flex", flexDirection: "column", background: COLORS.panel, borderLeft: `1px solid ${COLORS.panelBorder}` }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", padding: 16, borderBottom: `1px solid ${COLORS.panelBorder}` }}>
-              <div>
-                <div style={{ fontSize: 12, marginBottom: 4, color: COLORS.textFaint, ...sans }}>{formatDate(selected.createdAt)}{selected.status === "superseded" && " · superseded"}</div>
-                <div style={{ fontSize: 16, lineHeight: 1.3 }}>{selected.title}</div>
-              </div>
-              <button onClick={() => setSelectedId(null)} style={{ background: "none", border: "none" }}><XIcon size={16} color={COLORS.textFaint} /></button>
-            </div>
-            <div style={{ padding: 16, flex: 1, overflowY: "auto" }}>
-              {selected.body && <p style={{ fontSize: 14, lineHeight: 1.6, marginBottom: 12, color: COLORS.textMuted, ...noSelect }}>{selected.body}</p>}
-              <div style={{ fontSize: 12, marginBottom: 16, display: "flex", alignItems: "center", gap: 4, color: domainAccent(selected.domainId), ...sans }}>
-                {domainsById[selected.domainId]?.label || "Uncategorized"}
-                {selected.subdomainId && subdomainsById[selected.subdomainId] && (<><ChevronIcon size={11} color={COLORS.textFaint} /><span style={{ color: COLORS.textMuted }}>{subdomainsById[selected.subdomainId].label}</span></>)}
-              </div>
-              {connectedEdges.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontSize: 12, marginBottom: 8, color: COLORS.textFaint, ...sans }}>Connections</div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {connectedEdges.map((e) => {
-                      const otherId = e.source === selected.id ? e.target : e.source;
-                      const other = nodesById[otherId];
-                      if (!other) return null;
-                      const verb = e.type === "supersedes" ? (e.source === selected.id ? "supersedes" : "superseded by") : e.type;
-                      return (
-                        <button key={e.id} onClick={() => setSelectedId(other.id)} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, textAlign: "left", padding: "6px 8px", borderRadius: 6, background: COLORS.bg, border: "none", color: COLORS.text, ...sans }}>
-                          <span style={{ color: edgeColor(e.type), whiteSpace: "nowrap" }}>{verb}</span>
-                          <span style={{ color: COLORS.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{other.title}</span>
-                          <ChevronIcon size={12} color={COLORS.textFaint} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              {linking ? (
-                <div style={{ marginBottom: 16 }}>
-                  <input autoFocus value={linkQuery} onChange={(e) => setLinkQuery(e.target.value)} placeholder="Find a thought…"
-                    style={{ width: "100%", fontSize: 14, padding: "6px 10px", borderRadius: 6, marginBottom: 8, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans, ...noSelect }} />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 160, overflowY: "auto" }}>
-                    {linkCandidates.map((c) => (
-                      <div key={c.id} style={{ padding: "6px 8px", borderRadius: 6, background: COLORS.bg }}>
-                        <div style={{ fontSize: 12, marginBottom: 6, color: COLORS.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", ...sans }}>{c.title}</div>
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <button onClick={() => addLink(c.id, "support")} style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "transparent", color: COLORS.support, border: `1px solid ${COLORS.support}`, ...sans }}>supports</button>
-                          <button onClick={() => addLink(c.id, "contradict")} style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "transparent", color: COLORS.contradict, border: `1px solid ${COLORS.contradict}`, ...sans }}>contradicts</button>
-                          <button onClick={() => addLink(c.id, "supersedes")} style={{ fontSize: 12, padding: "2px 8px", borderRadius: 999, background: "transparent", color: COLORS.supersede, border: `1px solid ${COLORS.supersede}`, ...sans }}>supersedes</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <button onClick={() => setLinking(false)} style={{ fontSize: 12, marginTop: 8, background: "none", border: "none", color: COLORS.textFaint, ...sans }}>Cancel</button>
-                </div>
-              ) : (
-                <button onClick={() => setLinking(true)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, marginBottom: 16, background: "none", border: "none", color: COLORS.textMuted, ...sans }}><LinkIcon size={13} /> Link to another thought</button>
-              )}
-            </div>
-            <div style={{ padding: 16, borderTop: `1px solid ${COLORS.panelBorder}` }}>
-              <button onClick={() => deleteNode(selected.id)} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, background: "none", border: "none", color: COLORS.textFaint, ...sans }}><TrashIcon size={13} /> Delete</button>
-            </div>
-          </div>
-        )}
+    document.getElementById("search-input").addEventListener("input", function (e) { state.query = e.target.value; renderGraph(); });
+    document.getElementById("add-btn").onclick = function () { state.showAdd = true; renderAddModal(); };
+    document.getElementById("empty-add-btn").onclick = function () { state.showAdd = true; renderAddModal(); };
+    document.getElementById("domains-btn").onclick = function () { state.showDomains = true; renderDomainsModal(); };
 
-        {showDomains && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={() => setShowDomains(false)}>
-            <div style={{ width: 400, maxHeight: "80vh", overflowY: "auto", padding: 20, borderRadius: 12, display: "flex", flexDirection: "column", gap: 16, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ fontSize: 14, color: COLORS.textMuted, ...sans }}>Domains</div>
-                <button onClick={() => setShowDomains(false)} style={{ background: "none", border: "none" }}><XIcon size={16} color={COLORS.textFaint} /></button>
-              </div>
-              {domains.map((d) => (
-                <div key={d.id} style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 8, background: COLORS.bg }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <span style={{ color: domainAccent(d.id), fontSize: 14 }}>{d.label}</span>
-                    <button onClick={() => deleteDomain(d.id)} style={{ background: "none", border: "none" }}><TrashIcon size={13} color={COLORS.textFaint} /></button>
-                  </div>
-                  {subdomains.filter((s) => s.domainId === d.id).map((s) => (
-                    <div key={s.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 12, fontSize: 12, color: COLORS.textMuted, ...sans }}>
-                      <span>{s.label}</span>
-                      <button onClick={() => deleteSubdomain(s.id)} style={{ background: "none", border: "none" }}><TrashIcon size={12} color={COLORS.textFaint} /></button>
-                    </div>
-                  ))}
-                  <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                    <input value={newSubdomainText[d.id] || ""} onChange={(e) => setNewSubdomainText((s) => ({ ...s, [d.id]: e.target.value }))}
-                      onKeyDown={(e) => e.key === "Enter" && addSubdomain(d.id)} placeholder="+ sub-domain"
-                      style={{ fontSize: 12, padding: "4px 8px", borderRadius: 6, flex: 1, outline: "none", background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, ...sans, ...noSelect }} />
-                  </div>
-                </div>
-              ))}
-              <div style={{ paddingTop: 8, borderTop: `1px solid ${COLORS.panelBorder}` }}>
-                <div style={{ fontSize: 12, marginBottom: 8, color: COLORS.textFaint, ...sans }}>Add a domain</div>
-                {availableSuggestions.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-                    {availableSuggestions.map((s) => (
-                      <button key={s.id} onClick={() => addDomain(s.label, s.id)} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 999, background: "none", border: `1px solid ${COLORS.panelBorder}`, color: COLORS.textMuted, ...sans }}>+ {s.label}</button>
-                    ))}
-                  </div>
-                )}
-                <div style={{ display: "flex", gap: 6 }}>
-                  <input value={newDomainText} onChange={(e) => setNewDomainText(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addDomain(newDomainText, null)}
-                    placeholder="Custom domain name" style={{ fontSize: 12, padding: "6px 10px", borderRadius: 6, flex: 1, outline: "none", background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, ...sans, ...noSelect }} />
-                  <button onClick={() => addDomain(newDomainText, null)} style={{ fontSize: 12, padding: "6px 14px", borderRadius: 999, background: COLORS.text, color: COLORS.bg, border: "none", ...sans }}>Add</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+    document.getElementById("graph").addEventListener("click", function (e) {
+      var g = e.target.closest("[data-node-id]");
+      if (g) { state.selectedId = g.getAttribute("data-node-id"); state.linking = false; renderSidePanel(); renderGraph(); }
+    });
+  }
 
-        {showAdd && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={() => setShowAdd(false)}>
-            <div style={{ width: 380, padding: 20, borderRadius: 12, display: "flex", flexDirection: "column", gap: 12, background: COLORS.panel, border: `1px solid ${COLORS.panelBorder}` }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ fontSize: 14, color: COLORS.textMuted, ...sans }}>New thought</div>
-              <input autoFocus value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="One line — what's the view?"
-                style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans, ...noSelect }} />
-              <textarea value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} placeholder="Say more, and what prompted it, if you want." rows={4}
-                style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, resize: "none", background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans, ...noSelect }} />
-              <div style={{ display: "flex", gap: 8 }}>
-                <select value={form.domainId} onChange={(e) => setForm((f) => ({ ...f, domainId: e.target.value, subdomainId: "" }))}
-                  style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", ...sans }}>
-                  <option value={UNCATEGORIZED}>Uncategorized</option>
-                  {domains.map((d) => <option key={d.id} value={d.id}>{d.label}</option>)}
-                </select>
-                <select value={form.subdomainId} onChange={(e) => setForm((f) => ({ ...f, subdomainId: e.target.value }))} disabled={form.domainId === UNCATEGORIZED}
-                  style={{ fontSize: 14, padding: "8px 12px", borderRadius: 6, flex: 1, background: COLORS.bg, border: `1px solid ${COLORS.panelBorder}`, color: COLORS.text, outline: "none", opacity: form.domainId === UNCATEGORIZED ? 0.4 : 1, ...sans }}>
-                  <option value="">No sub-domain</option>
-                  {subdomains.filter((s) => s.domainId === form.domainId).map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
-                <button onClick={() => setShowAdd(false)} style={{ fontSize: 12, padding: "6px 12px", background: "none", border: "none", color: COLORS.textFaint, ...sans }}>Cancel</button>
-                <button onClick={addNode} style={{ fontSize: 12, padding: "6px 12px", borderRadius: 999, background: COLORS.text, color: COLORS.bg, border: "none", fontWeight: 500, ...sans }}>Add</button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById("root")).render(<Palimpsest />);
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+  else init();
+})();
 </script>
 </body>
 </html>
