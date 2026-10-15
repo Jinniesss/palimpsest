@@ -3,8 +3,8 @@
   "short_name": "Palimpsest",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0B0B10",
-  "theme_color": "#0B0B10",
+  "background_color": "#060914",
+  "theme_color": "#060914",
   "icons": [
     { "src": "apple-touch-icon.png", "sizes": "512x512", "type": "image/png" }
   ]
