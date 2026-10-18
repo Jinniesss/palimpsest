@@ -22,17 +22,17 @@
     --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin:0; padding:0; width:100%; height:100%;
-    position:fixed; overflow:hidden; overscroll-behavior:none;
-    background: radial-gradient(120% 90% at 50% 38%, var(--bg2) 0%, var(--bg1) 55%, var(--bg0) 100%);
+  html { position:fixed; top:0; right:0; bottom:0; left:0; margin:0; padding:0; overflow:hidden; background:#050813; }
+  body {
+    position:fixed; top:0; right:0; bottom:0; left:0; margin:0; padding:0; overflow:hidden; overscroll-behavior:none;
+    background: radial-gradient(120% 90% at 50% 38%, var(--bg2) 0%, var(--bg1) 55%, var(--bg0) 100%) #050813;
     color: var(--text); font-family: var(--font);
     -webkit-font-smoothing: antialiased;
     -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
   }
   input, textarea, select { -webkit-user-select:text; user-select:text; font-family: inherit; }
   button { font-family: inherit; cursor: pointer; border: 0; background: none; color: inherit; padding: 0; }
-  #app { position:fixed; inset:0; height:100vh; height:100dvh; overflow:hidden; }
+  #app { position:fixed; top:0; right:0; bottom:0; left:0; overflow:hidden; }
 
   .page { position:absolute; inset:0; display:none; }
   .page.on { display:block; }
@@ -128,14 +128,14 @@
   ::placeholder { color: var(--faint); }
 
   /* ---------- Modal editor ---------- */
-  #modal { position:absolute; inset:0; z-index:50; display:none; align-items:flex-end; justify-content:center; background: rgba(2,4,10,.55); opacity:0; transition: opacity .25s; }
+  #modal { position:absolute; top:0; right:0; bottom:0; left:0; z-index:50; display:none; align-items:center; justify-content:center; padding: calc(var(--sat) + 16px) 16px calc(var(--sab) + 16px); background: rgba(2,4,10,.6); opacity:0; transition: opacity .25s; }
   #modal.on { display:flex; }
   #modal.show { opacity:1; }
   .modal-card {
-    width:100%; max-width:560px; max-height: 92dvh; display:flex; flex-direction:column;
-    background: rgba(14,19,38,.96); border-radius:22px 22px 0 0; border:1px solid var(--line); border-bottom:0;
-    transform: translateY(40px); transition: transform .3s cubic-bezier(.2,.8,.2,1);
-    padding-bottom: var(--sab);
+    width:100%; max-width:480px; max-height:100%; display:flex; flex-direction:column; overflow:hidden;
+    background: rgba(14,19,38,.97); border-radius:24px; border:1px solid rgba(255,255,255,.12);
+    box-shadow: 0 24px 70px rgba(0,0,0,.55);
+    transform: scale(.95); transition: transform .28s cubic-bezier(.2,.8,.2,1);
   }
   #modal.show .modal-card { transform:none; }
   .modal-bar { display:flex; align-items:center; justify-content:space-between; padding:16px 20px 10px; }
@@ -153,6 +153,29 @@
   .addrow { display:flex; gap:8px; margin-top:10px; align-items:center; }
   .addrow select { flex:1; min-width:0; }
   .addrow .btn { flex:none; padding:11px 14px; font-size:15px; }
+
+  .dom-wrap { display:flex; align-items:center; gap:8px; }
+  .dom-row { flex:1; min-width:0; display:flex; gap:8px; overflow-x:auto; -webkit-overflow-scrolling:touch; padding:2px 0 4px; scrollbar-width:none; }
+  .dom-row::-webkit-scrollbar { display:none; }
+  .pencil { flex:none; width:36px; height:36px; border-radius:18px; background: var(--fill); display:flex; align-items:center; justify-content:center; }
+  .pencil svg { width:18px; height:18px; stroke: var(--accent); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  .dchip { flex:none; display:inline-flex; align-items:center; gap:7px; padding:8px 13px; border-radius:18px; font-size:14px; border:1px solid transparent; white-space:nowrap; }
+  .dchip small { color: var(--muted); font-size:12px; }
+  .lrow + .lrow, .lrow + .lrow-add { border-top:1px solid var(--line); }
+  .lrow-main { display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:12px 14px; }
+  .lrow-main .main { flex:1; min-width:0; }
+  .lrow-main .main b { display:block; font-weight:500; font-size:15.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lrow-main .main small { display:block; font-size:12.5px; color: var(--muted); margin-top:1px; }
+  .lrow-main .chev { color: var(--faint); font-size:18px; }
+  .lrow.open { background: rgba(255,255,255,.04); }
+  .lrow-edit { padding: 2px 14px 14px; }
+  .rm { margin-top:12px; color:#ff8a96; font-size:14.5px; font-weight:500; }
+  .lrow-add { display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:13px 14px; color: var(--accent); font-size:15.5px; font-weight:500; }
+  .lrow-add .plus { width:22px; height:22px; border-radius:11px; background: rgba(207,216,255,.16); display:inline-flex; align-items:center; justify-content:center; font-size:17px; line-height:1; }
+  .name-in { flex:1; min-width:0; background:none; border:0; outline:none; color: var(--text); font-size:16px; padding:0; }
+  .crow .sub { color: var(--muted); font-size:13px; padding-right:8px; }
+  .crow { padding-right:10px; }
+  .crow .addbtn { padding:4px 6px; }
 
   /* ---------- Settings ---------- */
   #page-settings { overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; }
@@ -408,7 +431,7 @@ function resize() {
   W = canvas.clientWidth || window.innerWidth; H = canvas.clientHeight || window.innerHeight;
   canvas.width = Math.round(W * DPR); canvas.height = Math.round(H * DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  R = Math.min(W, H * .72) * .42;
+  R = Math.min(W * .64, H * .56);
   CX = W / 2;
   CYT = baseCY();
   if (!CY) CY = CYT;
@@ -470,7 +493,7 @@ function frame(ts) {
   }
   // vertical centre eases above the sheet
   var sh = sheetHeight();
-  CYT = sh ? Math.max(R * .55 + 64, (52 + (H - sh)) / 2) : baseCY();
+  CYT = sh ? (52 + (H - sh)) / 2 : baseCY();
   CY += (CYT - CY) * (1 - Math.pow(.88, k));
 
   draw(ts, e);
@@ -534,6 +557,7 @@ function draw(ts, e) {
       var x = CX + rr[0] * SR, y = CY - rr[1] * SR - 30 * zs - 6;
       var a = clamp((rr[2] - .15) / .6, 0, 1) * (sel ? .32 : .62);
       var w = ctx.measureText(dm.name).width;
+      x = clamp(x, w / 2 + 10, W - w / 2 - 10);
       ctx.fillStyle = rgba(dm.color, a); ctx.fillText(dm.name, x, y);
       labelBoxes.push({ id: dm.id, x: x - w / 2 - 8, y: y - 12, w: w + 16, h: 24, v: cv });
     });
@@ -619,7 +643,7 @@ function star(x, y, r, hex, a, spark) {
 /* ---------- pointer interaction ---------- */
 var ptrs = {}, nptr = 0, drag = null, pinch = null;
 canvas.addEventListener('pointerdown', function (ev) {
-  canvas.setPointerCapture(ev.pointerId);
+  try { canvas.setPointerCapture(ev.pointerId); } catch (e) {}
   if (!ptrs[ev.pointerId]) nptr++;
   ptrs[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
   lastTouch = performance.now(); fly = null;
@@ -632,7 +656,7 @@ canvas.addEventListener('pointermove', function (ev) {
   lastTouch = performance.now();
   if (nptr === 2 && pinch) {
     var ks = Object.keys(ptrs), d = Math.hypot(ptrs[ks[0]].x - ptrs[ks[1]].x, ptrs[ks[0]].y - ptrs[ks[1]].y);
-    if (pinch.d > 0) cam.zoom = clamp(cam.zoom * d / pinch.d, .7, 2.6);
+    if (pinch.d > 0) cam.zoom = clamp(cam.zoom * d / pinch.d, .6, 3.4);
     pinch.d = d; return;
   }
   if (drag && nptr === 1) {
@@ -650,12 +674,14 @@ function endPtr(ev) {
   var wasTap = drag && nptr === 1 && drag.moved < 8 && performance.now() - drag.t < 600;
   delete ptrs[ev.pointerId]; nptr = Object.keys(ptrs).length;
   if (nptr < 2) pinch = null;
+  if (nptr === 1) { var rk = Object.keys(ptrs)[0]; drag = { sx: ptrs[rk].x, sy: ptrs[rk].y, lx: ptrs[rk].x, ly: ptrs[rk].y, t: performance.now(), moved: 99 }; vel.y = vel.p = 0; }
   if (nptr === 0) { dragging = false; if (wasTap) { vel.y = vel.p = 0; onTap(ev.clientX, ev.clientY); } drag = null; }
   lastTouch = performance.now();
 }
 canvas.addEventListener('pointerup', endPtr);
 canvas.addEventListener('pointercancel', endPtr);
-canvas.addEventListener('wheel', function (ev) { ev.preventDefault(); cam.zoom = clamp(cam.zoom * (ev.deltaY < 0 ? 1.08 : .926), .7, 2.6); lastTouch = performance.now(); }, { passive: false });
+['gesturestart', 'gesturechange', 'gestureend'].forEach(function (g) { document.addEventListener(g, function (e) { e.preventDefault(); }); });
+canvas.addEventListener('wheel', function (ev) { ev.preventDefault(); cam.zoom = clamp(cam.zoom * (ev.deltaY < 0 ? 1.08 : .926), .6, 3.4); lastTouch = performance.now(); }, { passive: false });
 
 function onTap(cx, cy) {
   var rect = canvas.getBoundingClientRect(), x = cx - rect.left, y = cy - rect.top;
@@ -681,7 +707,7 @@ function onTap(cx, cy) {
   // domain names
   for (var i2 = 0; i2 < labelBoxes.length; i2++) {
     var b = labelBoxes[i2];
-    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { flyTo(b.v, Math.max(cam.zoom, 1.4)); return; }
+    if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { flyTo(b.v, Math.max(cam.zoom, 1.25)); return; }
   }
   if (sel) closeSheet();
 }
@@ -706,7 +732,7 @@ function selectNode(id, noFly) {
   var t = thoughtById(id); if (!t) return;
   sel = { kind: 'node', id: id };
   renderNodeSheet(t); openSheet();
-  if (!noFly) flyTo(t.p, Math.max(cam.zoom, 1.7));
+  if (!noFly) flyTo(t.p, Math.max(cam.zoom, 1.3));
 }
 function selectEdge(id) {
   var l = linkById(id); if (!l) return;
@@ -714,7 +740,7 @@ function selectEdge(id) {
   sel = { kind: 'edge', id: id };
   renderEdgeSheet(l); openSheet();
   var a = disp[l.a] || thoughtById(l.a).p, b = disp[l.b] || thoughtById(l.b).p;
-  flyTo(nrm([a[0] + b[0], a[1] + b[1], a[2] + b[2]]), Math.max(cam.zoom, 1.5));
+  flyTo(nrm([a[0] + b[0], a[1] + b[1], a[2] + b[2]]), Math.max(cam.zoom, 1.2));
 }
 
 function linksOf(id) { return S.links.filter(function (l) { return l.a === id || l.b === id; }); }
@@ -793,106 +819,181 @@ sheetBody.addEventListener('click', function (ev) {
 })();
 
 /* =========================================================
-   Editor (modal)
+   Editor (floating modal)
    ========================================================= */
 var modal = $('#modal'), modalCard = $('#modal-card');
 var ed = null;
 
-function typeOptions(selected) {
-  var h = '';
-  S.types.forEach(function (t) {
-    if (t.id === 'supersedes') {
-      h += '<option value="supersedes"' + (selected === 'supersedes' ? ' selected' : '') + '>Supersedes</option>';
-      h += '<option value="supersedes:rev"' + (selected === 'supersedes:rev' ? ' selected' : '') + '>Superseded by</option>';
-    } else h += '<option value="' + t.id + '"' + (selected === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>';
-  });
-  return h;
+function pencilSvg() { return '<svg viewBox="0 0 24 24"><path d="M4 20h4L18.5 9.5a2.1 2.1 0 0 0-3-3L5 17v3z"/><path d="M14 8l2 2"/></svg>'; }
+function chipHtml(act, id, name, color, on, extra) {
+  return '<button class="dchip' + (on ? ' on' : '') + '" data-act="' + act + '" data-id="' + id + '" style="background:' + rgba(color, on ? .28 : .12) + ';border-color:' + (on ? color : 'transparent') + '"><i class="dot" style="background:' + color + '"></i>' + esc(name) + (extra != null ? '<small>' + extra + '</small>' : '') + '</button>';
 }
+function baseType(t) { return t.replace(':rev', ''); }
+function edLabel(t) { if (t === 'supersedes') return 'Supersedes'; if (t === 'supersedes:rev') return 'Superseded by'; return typeById(t).name; }
 
 function openEditor(id) {
   var t = id ? thoughtById(id) : null;
-  ed = { id: id || null, title: t ? t.title : '', body: t ? t.body : '', domain: t ? t.domain : (S.domains[0].id),
+  ed = { id: id || null, title: t ? t.title : '', body: t ? t.body : '', domain: t ? t.domain : S.domains[0].id, view: 'form', open: null, pk: { dom: 'all', q: '' },
          links: t ? linksOf(id).map(function (l) { var o = l.a === id ? l.b : l.a; return { key: l.id, lid: l.id, other: o, type: (l.type === 'supersedes' && l.b === id) ? 'supersedes:rev' : l.type }; }) : [] };
+  renderEditor();
+  modal.classList.add('on'); requestAnimationFrame(function () { modal.classList.add('show'); });
+  if (!t) setTimeout(function () { var i = $('#ed-title'); if (i && ed && ed.view === 'form') i.focus(); }, 340);
+}
+function closeEditor() { modal.classList.remove('show'); setTimeout(function () { modal.classList.remove('on'); modalCard.innerHTML = ''; ed = null; }, 240); }
+
+function renderEditor() {
+  if (ed.view === 'domains') return renderDomEditor();
+  if (ed.view === 'pick') return renderPicker();
+  var t = ed.id ? thoughtById(ed.id) : null;
   var h = '<div class="modal-bar"><button class="link" data-act="ed-cancel">Cancel</button><div class="modal-title">' + (t ? 'Edit thought' : 'New thought') + '</div><button class="link strong" data-act="ed-save">Save</button></div>';
   h += '<div class="modal-scroll">';
   h += '<div class="flabel">Thought</div><input class="field" id="ed-title" type="text" maxlength="140" placeholder="What are you thinking?" value="' + esc(ed.title) + '" autocomplete="off">';
-  h += '<div class="flabel">Description</div><textarea class="field" id="ed-body" rows="5" placeholder="Say it in your own words">' + esc(ed.body) + '</textarea>';
-  h += '<div class="flabel">Domain</div><select class="field" id="ed-domain">';
-  S.domains.forEach(function (d) { h += '<option value="' + d.id + '"' + (d.id === ed.domain ? ' selected' : '') + '>' + esc(d.name) + '</option>'; });
-  h += '</select>';
+  h += '<div class="flabel">Description</div><textarea class="field" id="ed-body" rows="4" placeholder="Say it in your own words">' + esc(ed.body) + '</textarea>';
+  h += '<div class="flabel">Domain</div><div class="dom-wrap"><button class="pencil" data-act="ed-doms" aria-label="Edit domains">' + pencilSvg() + '</button><div class="dom-row" id="ed-doms"></div></div>';
   h += '<div class="flabel">Connections</div><div class="list" id="ed-links"></div>';
-  h += '<div class="addrow"><select class="field" id="ed-other" style="padding:10px 12px;font-size:15px"></select><select class="field" id="ed-type" style="width:34%;flex:none;padding:10px 10px;font-size:15px">' + typeOptions('related') + '</select><button class="btn" data-act="ed-add">Add</button></div>';
-  if (t) h += '<div class="actions" style="margin-top:26px"><button class="btn danger" data-act="ed-delete">Delete thought</button></div>';
+  if (t) h += '<div class="actions" style="margin-top:24px"><button class="btn danger" data-act="ed-delete">Delete thought</button></div>';
   h += '</div>';
   modalCard.innerHTML = h;
-  renderEdLinks(); renderEdOthers();
-  modal.classList.add('on'); requestAnimationFrame(function () { modal.classList.add('show'); });
-  if (!t) setTimeout(function () { var i = $('#ed-title'); if (i) i.focus(); }, 320);
+  renderEdDoms(); renderEdLinks();
 }
-function renderEdOthers() {
-  var used = {}; ed.links.forEach(function (l) { used[l.other] = 1; });
-  var h = '';
-  S.thoughts.forEach(function (t) { if (t.id !== ed.id && !used[t.id]) h += '<option value="' + t.id + '">' + esc(trunc(t.title, 40)) + '</option>'; });
-  var sel2 = $('#ed-other'); sel2.innerHTML = h || '<option value="">No other thoughts</option>'; sel2.disabled = !h;
+function renderEdDoms() {
+  var h = ''; S.domains.forEach(function (d) { h += chipHtml('ed-dom', d.id, d.name, d.color, d.id === ed.domain); });
+  var box = $('#ed-doms'); if (box) box.innerHTML = h;
 }
 function renderEdLinks() {
-  var box = $('#ed-links');
-  if (!ed.links.length) { box.innerHTML = '<div class="empty-note">No connections yet.</div>'; return; }
   var h = '';
   ed.links.forEach(function (l) {
     var o = thoughtById(l.other); if (!o) return;
-    h += '<div class="crow"><span class="ttl">' + esc(o.title) + '</span><select class="mini" data-lk="' + l.key + '">' + typeOptions(l.type) + '</select><button class="xbtn" data-act="ed-rm" data-key="' + l.key + '" aria-label="Remove">\u00d7</button></div>';
+    var ty = typeById(baseType(l.type)), open = ed.open === l.key;
+    h += '<div class="lrow' + (open ? ' open' : '') + '"><button class="lrow-main" data-act="ed-open" data-key="' + l.key + '"><i class="dot" style="background:' + ty.color + '"></i><span class="main"><b>' + esc(o.title) + '</b><small>' + esc(edLabel(l.type)) + '</small></span><span class="chev">' + (open ? '\u2303' : '\u203a') + '</span></button>';
+    if (open) {
+      h += '<div class="lrow-edit"><div class="chips">';
+      S.types.forEach(function (t) {
+        if (t.id === 'supersedes') {
+          h += '<button class="tchip' + (l.type === 'supersedes' ? ' on' : '') + '" data-act="ed-settype" data-key="' + l.key + '" data-type="supersedes"><i class="dot" style="background:' + t.color + '"></i>Supersedes</button>';
+          h += '<button class="tchip' + (l.type === 'supersedes:rev' ? ' on' : '') + '" data-act="ed-settype" data-key="' + l.key + '" data-type="supersedes:rev"><i class="dot" style="background:' + t.color + '"></i>Superseded by</button>';
+        } else h += '<button class="tchip' + (l.type === t.id ? ' on' : '') + '" data-act="ed-settype" data-key="' + l.key + '" data-type="' + t.id + '"><i class="dot" style="background:' + t.color + '"></i>' + esc(t.name) + '</button>';
+      });
+      h += '</div><button class="rm" data-act="ed-rm" data-key="' + l.key + '">Remove connection</button></div>';
+    }
+    h += '</div>';
   });
-  box.innerHTML = h;
+  h += '<button class="lrow-add" data-act="ed-pick"><span class="plus">+</span>Add connection</button>';
+  var box = $('#ed-links'); if (box) box.innerHTML = h;
 }
-function closeEditor() { modal.classList.remove('show'); setTimeout(function () { modal.classList.remove('on'); modalCard.innerHTML = ''; ed = null; }, 260); }
+
+/* ----- picker: choose a domain, then search within it ----- */
+function eligible() {
+  var used = {}; ed.links.forEach(function (l) { used[l.other] = 1; });
+  return S.thoughts.filter(function (t) { return t.id !== ed.id && !used[t.id]; });
+}
+function renderPicker() {
+  var h = '<div class="modal-bar"><button class="link" data-act="pk-back">Back</button><div class="modal-title">Add connection</div><span style="width:44px"></span></div>';
+  h += '<div class="modal-scroll"><div class="flabel">Domain</div><div class="dom-wrap"><div class="dom-row" id="pk-doms"></div></div>';
+  h += '<input class="field" id="pk-q" type="search" placeholder="Search thoughts" autocomplete="off" style="margin-top:12px" value="' + esc(ed.pk.q) + '">';
+  h += '<div class="list" id="pk-list" style="margin-top:12px"></div></div>';
+  modalCard.innerHTML = h; renderPkDoms(); renderPkList();
+}
+function renderPkDoms() {
+  var el = eligible(), cnt = {}; el.forEach(function (t) { cnt[t.domain] = (cnt[t.domain] || 0) + 1; });
+  var h = chipHtml('pk-dom', 'all', 'All', '#C9D2EA', ed.pk.dom === 'all', el.length);
+  S.domains.forEach(function (d) { if (cnt[d.id] || ed.pk.dom === d.id) h += chipHtml('pk-dom', d.id, d.name, d.color, ed.pk.dom === d.id, cnt[d.id] || 0); });
+  var box = $('#pk-doms'); if (box) box.innerHTML = h;
+}
+function renderPkList() {
+  var q = ed.pk.q.trim().toLowerCase(), items = eligible().filter(function (t) {
+    if (ed.pk.dom !== 'all' && t.domain !== ed.pk.dom) return false;
+    return !q || t.title.toLowerCase().indexOf(q) >= 0 || (t.body || '').toLowerCase().indexOf(q) >= 0;
+  });
+  var h = '';
+  items.forEach(function (t) {
+    var dm = domainOf(S, t.domain);
+    h += '<button class="li" data-act="pk-add" data-id="' + t.id + '"><i class="dot" style="background:' + dm.color + '"></i><span class="main"><b>' + esc(t.title) + '</b>' + (ed.pk.dom === 'all' ? '<small>' + esc(dm.name) + '</small>' : '') + '</span></button>';
+  });
+  var box = $('#pk-list'); if (box) box.innerHTML = h || '<div class="empty-note">' + (q ? 'No thoughts match.' : 'No thoughts here yet.') + '</div>';
+}
+
+/* ----- domain manager ----- */
+function renderDomEditor() {
+  var h = '<div class="modal-bar"><span style="width:44px"></span><div class="modal-title">Domains</div><button class="link strong" data-act="dm-done">Done</button></div><div class="modal-scroll"><div class="list">';
+  S.domains.forEach(function (d) {
+    h += '<div class="crow"><i class="dot" style="background:' + d.color + '"></i><input class="name-in" data-edom="' + d.id + '" value="' + esc(d.name) + '" maxlength="32" ' + (d.id === 'none' ? 'readonly' : '') + '>' + (d.id === 'none' ? '<span class="sub">fallback</span>' : '<button class="xbtn" data-act="dm-del" data-id="' + d.id + '" aria-label="Delete domain">\u00d7</button>') + '</div>';
+  });
+  h += '<div class="crow"><input class="name-in" id="dm-new" maxlength="32" placeholder="New domain"><button class="addbtn" data-act="dm-add">Add</button></div></div>';
+  var have = {}; S.domains.forEach(function (d) { have[d.name.toLowerCase()] = 1; });
+  var sug = SUGGESTED.filter(function (s) { return !have[s.toLowerCase()]; });
+  if (sug.length) { h += '<div class="flabel">Suggestions</div><div class="chips">'; sug.forEach(function (s) { h += '<button class="tchip" data-act="dm-sug" data-name="' + esc(s) + '">+ ' + esc(s) + '</button>'; }); h += '</div>'; }
+  h += '<p class="foot" style="margin:18px 4px 0">Thoughts in a deleted domain move to Uncategorized.</p></div>';
+  modalCard.innerHTML = h;
+}
 
 modalCard.addEventListener('input', function (ev) {
   if (!ed) return;
   if (ev.target.id === 'ed-title') { ed.title = ev.target.value; ev.target.classList.remove('err'); }
   else if (ev.target.id === 'ed-body') ed.body = ev.target.value;
+  else if (ev.target.id === 'pk-q') { ed.pk.q = ev.target.value; renderPkList(); }
 });
 modalCard.addEventListener('change', function (ev) {
   if (!ed) return;
-  if (ev.target.id === 'ed-domain') ed.domain = ev.target.value;
-  else if (ev.target.getAttribute('data-lk')) {
-    var k = ev.target.getAttribute('data-lk');
-    ed.links.forEach(function (l) { if (l.key === k) l.type = ev.target.value; });
+  var id = ev.target.getAttribute('data-edom');
+  if (id) {
+    var d = S.domains.filter(function (x) { return x.id === id; })[0], v = ev.target.value.trim();
+    if (d && v) { d.name = v; persist(); } else if (d) ev.target.value = d.name;
   }
 });
+modalCard.addEventListener('keydown', function (ev) {
+  if (ev.key === 'Enter' && ev.target.id === 'dm-new') { ev.preventDefault(); edAddDomain(ev.target.value); }
+});
+function edAddDomain(name) {
+  if (!createDomain(name)) return;
+  renderDomEditor(); var i = $('#dm-new'); if (i) i.focus();
+}
 modalCard.addEventListener('click', function (ev) {
   var b = ev.target.closest('[data-act]'); if (!b || !ed) return;
-  var act = b.getAttribute('data-act');
+  var act = b.getAttribute('data-act'), id = b.getAttribute('data-id'), key = b.getAttribute('data-key');
   if (act === 'ed-cancel') closeEditor();
-  else if (act === 'ed-add') {
-    var o = $('#ed-other').value, ty = $('#ed-type').value; if (!o) return;
-    ed.links.push({ key: 'n' + uid(), lid: null, other: o, type: ty });
-    renderEdLinks(); renderEdOthers();
+  else if (act === 'ed-save') saveEditor();
+  else if (act === 'ed-dom') { ed.domain = id; renderEdDoms(); }
+  else if (act === 'ed-doms') { ed.view = 'domains'; renderEditor(); }
+  else if (act === 'dm-done') { if (!S.domains.some(function (d) { return d.id === ed.domain; })) ed.domain = 'none'; ed.view = 'form'; renderEditor(); }
+  else if (act === 'dm-add') edAddDomain($('#dm-new').value);
+  else if (act === 'dm-sug') edAddDomain(b.getAttribute('data-name'));
+  else if (act === 'dm-del') {
+    var d = S.domains.filter(function (x) { return x.id === id; })[0]; if (!d) return;
+    if (!confirm('Delete \u201c' + d.name + '\u201d? Its thoughts move to Uncategorized.')) return;
+    removeDomain(id); if (ed.domain === id) ed.domain = 'none'; renderDomEditor();
   }
-  else if (act === 'ed-rm') { var key = b.getAttribute('data-key'); ed.links = ed.links.filter(function (l) { return l.key !== key; }); renderEdLinks(); renderEdOthers(); }
+  else if (act === 'ed-open') { ed.open = ed.open === key ? null : key; renderEdLinks(); }
+  else if (act === 'ed-settype') { ed.links.forEach(function (l) { if (l.key === key) l.type = b.getAttribute('data-type'); }); renderEdLinks(); }
+  else if (act === 'ed-rm') { ed.links = ed.links.filter(function (l) { return l.key !== key; }); ed.open = null; renderEdLinks(); }
+  else if (act === 'ed-pick') { ed.view = 'pick'; ed.pk = { dom: 'all', q: '' }; renderEditor(); }
+  else if (act === 'pk-back') { ed.view = 'form'; renderEditor(); }
+  else if (act === 'pk-dom') { ed.pk.dom = id; renderPkDoms(); renderPkList(); }
+  else if (act === 'pk-add') {
+    var nk = 'n' + uid(); ed.links.push({ key: nk, lid: null, other: id, type: 'related' }); ed.open = nk; ed.view = 'form'; renderEditor();
+    var row = modalCard.querySelector('.lrow.open'); if (row && row.scrollIntoView) row.scrollIntoView({ block: 'center' });
+  }
   else if (act === 'ed-delete') {
     if (!b.getAttribute('data-armed')) { b.setAttribute('data-armed', '1'); b.textContent = 'Tap again to delete'; return; }
-    var id = ed.id;
-    S.links = S.links.filter(function (l) { return l.a !== id && l.b !== id; });
-    S.thoughts = S.thoughts.filter(function (t) { return t.id !== id; }); delete disp[id];
+    var tid = ed.id;
+    S.links = S.links.filter(function (l) { return l.a !== tid && l.b !== tid; });
+    S.thoughts = S.thoughts.filter(function (t) { return t.id !== tid; }); delete disp[tid];
     relax(S, 30); persist(); updateCount(); closeEditor(); closeSheet();
   }
-  else if (act === 'ed-save') saveEditor();
 });
 
 function saveEditor() {
   var title = (ed.title || '').trim();
-  if (!title) { var i = $('#ed-title'); i.classList.add('err'); i.focus(); return; }
+  if (!title) { var i = $('#ed-title'); if (i) { i.classList.add('err'); i.focus(); } return; }
   var now = Date.now(), id = ed.id, t;
+  if (!S.domains.some(function (d) { return d.id === ed.domain; })) ed.domain = 'none';
   if (id) {
-    t = thoughtById(id); t.title = title; t.body = ed.body.trim(); t.updated = now;
-    if (t.domain !== ed.domain) t.domain = ed.domain;
+    t = thoughtById(id); t.title = title; t.body = (ed.body || '').trim(); t.updated = now; t.domain = ed.domain;
   } else {
     id = uid(); var dm = domainOf(S, ed.domain), rand = rng(hash(id));
-    t = { id: id, title: title, body: ed.body.trim(), domain: ed.domain, created: now, updated: now, p: tangentJitter(dm.a, rand, .5) };
+    t = { id: id, title: title, body: (ed.body || '').trim(), domain: ed.domain, created: now, updated: now, p: tangentJitter(dm.a, rand, .5) };
     S.thoughts.push(t);
   }
-  // reconcile links
   var keep = {};
   ed.links.forEach(function (w) {
     var rev = w.type === 'supersedes:rev', ty = rev ? 'supersedes' : w.type;
@@ -989,11 +1090,17 @@ setEl.addEventListener('keydown', function (ev) {
   else if (ev.target.id === 'new-typ') addType(ev.target.value);
   else if (ev.target.getAttribute('data-dom') || ev.target.getAttribute('data-typ')) ev.target.blur();
 });
-function addDomain(name) {
-  name = (name || '').trim(); if (!name) return;
-  S.domains.splice(S.domains.length - 1, 0, { id: 'd' + uid(), name: name, color: nextColor(), a: newAnchor() });
-  persist(); renderSettings();
+function createDomain(name) {
+  name = (name || '').trim(); if (!name) return null;
+  var d = { id: 'd' + uid(), name: name, color: nextColor(), a: newAnchor() };
+  S.domains.splice(S.domains.length - 1, 0, d); persist(); return d;
 }
+function removeDomain(id) {
+  S.thoughts.forEach(function (t) { if (t.domain === id) t.domain = 'none'; });
+  S.domains = S.domains.filter(function (x) { return x.id !== id; });
+  relax(S, 120); persist();
+}
+function addDomain(name) { if (createDomain(name)) renderSettings(); }
 function addType(name) {
   name = (name || '').trim(); if (!name) return;
   S.types.splice(S.types.length - 1, 0, { id: 't' + uid(), name: name, color: nextColor() });
@@ -1008,9 +1115,7 @@ setEl.addEventListener('click', function (ev) {
   else if (act === 'deldom') {
     var d = S.domains.filter(function (x) { return x.id === id; })[0]; if (!d) return;
     if (!confirm('Delete \u201c' + d.name + '\u201d? Its thoughts move to Uncategorized.')) return;
-    S.thoughts.forEach(function (t) { if (t.domain === id) t.domain = 'none'; });
-    S.domains = S.domains.filter(function (x) { return x.id !== id; });
-    relax(S, 120); persist(); renderSettings();
+    removeDomain(id); renderSettings();
   }
   else if (act === 'deltype') {
     var ty = typeById(id);
